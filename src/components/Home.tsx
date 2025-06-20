@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { parseUnits } from "viem";
-import { useConnect, useSendCalls, useAccount } from "wagmi";
+import { parseUnits, formatEther } from "viem";
+import { useConnect, useSendCalls, useAccount, useBalance } from "wagmi";
 
 interface DataRequest {
   email: boolean;
@@ -24,6 +24,10 @@ export default function Home() {
   const { sendCalls, data, error, isPending } = useSendCalls();
   const { connect, connectors } = useConnect();
   const { isConnected, address } = useAccount();
+  const { data: balance } = useBalance({
+    address: address,
+    chainId: 84532, // Base Sepolia
+  });
 
   // Function to get callback URL - using Supabase Edge Function
   function getCallbackURL() {
@@ -142,9 +146,12 @@ export default function Home() {
             </button>
           </div>
         ) : (
-          <div style={{ marginBottom: "20px", padding: "10px", backgroundColor: "#e8f5e8", borderRadius: "5px" }}>
-            <p style={{ margin: 0, color: "#2d5a2d" }}>
+          <div style={{ marginBottom: "20px", padding: "15px", backgroundColor: "#e8f5e8", borderRadius: "8px", border: "1px solid #c3e6c3" }}>
+            <p style={{ margin: "0 0 8px 0", color: "#2d5a2d", fontSize: "14px" }}>
               <strong>Connected:</strong> {address?.slice(0, 6)}...{address?.slice(-4)}
+            </p>
+            <p style={{ margin: 0, color: "#2d5a2d", fontSize: "14px" }}>
+              <strong>Balance:</strong> {balance ? `${parseFloat(formatEther(balance.value)).toFixed(4)} ETH` : "Loading..."}
             </p>
           </div>
         )}
