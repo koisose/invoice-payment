@@ -74,10 +74,10 @@ Deno.serve(async (req: Request) => {
     // If there are validation errors, return them
     if (Object.keys(errors).length > 0) {
       return new Response(
-        JSON.stringify({ request: {
-          calls: requestData.calls,
-          chainId: requestData.chainId,
-          capabilities: requestData.capabilities,
+        JSON.stringify({     request: {
+          calls: [], // Replace the old calls with new ones
+          chainId: numberToHex(84532), // Base Sepolia
+          version: "1.0",
         } }),
         {
           status: 400,
