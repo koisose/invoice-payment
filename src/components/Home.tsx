@@ -16,6 +16,14 @@ interface ProfileResult {
   saved?: boolean;
 }
 
+interface InvoiceData {
+  recipientEmail: string;
+  amount: string;
+  currency: string;
+  description: string;
+  dueDate: string;
+}
+
 export default function Home() {
   const [dataToRequest, setDataToRequest] = useState<DataRequest>({
     email: true,
@@ -25,6 +33,15 @@ export default function Home() {
   const [copySuccess, setCopySuccess] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+  const [showInvoiceForm, setShowInvoiceForm] = useState(false);
+  const [invoiceData, setInvoiceData] = useState<InvoiceData>({
+    recipientEmail: '',
+    amount: '',
+    currency: 'USDC',
+    description: '',
+    dueDate: ''
+  });
+  const [isCreatingInvoice, setIsCreatingInvoice] = useState(false);
 
   const { sendCalls, data, error, isPending } = useSendCalls();
   const { connect, connectors } = useConnect();
@@ -113,6 +130,7 @@ export default function Home() {
     disconnect();
     setResult(null); // Clear any previous results
     setUserProfile(null); // Clear user profile
+    setShowInvoiceForm(false); // Hide invoice form
   }
 
   // Handle response data when sendCalls completes
@@ -161,8 +179,8 @@ export default function Home() {
     }
   }, [error]);
 
-  // Handle form submission
-  async function handleSubmit() {
+  // Handle form submission for new users (email registration)
+  async function handleEmailRegistration() {
     try {
       setResult(null);
 
@@ -196,6 +214,40 @@ export default function Home() {
         success: false, 
         error: err instanceof Error ? err.message : "Unknown error occurred" 
       });
+    }
+  }
+
+  // Handle invoice form submission
+  async function handleInvoiceSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setIsCreatingInvoice(true);
+
+    try {
+      // Simulate invoice creation process
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      setResult({
+        success: true,
+        email: userProfile?.email || invoiceData.recipientEmail,
+        saved: true
+      });
+      
+      // Reset form
+      setInvoiceData({
+        recipientEmail: '',
+        amount: '',
+        currency: 'USDC',
+        description: '',
+        dueDate: ''
+      });
+      setShowInvoiceForm(false);
+    } catch (err) {
+      setResult({
+        success: false,
+        error: "Failed to create invoice"
+      });
+    } finally {
+      setIsCreatingInvoice(false);
     }
   }
 
@@ -326,45 +378,183 @@ export default function Home() {
                 </div>
               ) : null}
 
-              {/* Invoice Creation */}
-              <div className="text-center">
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                  {userProfile ? 'Create New Invoice' : 'Create Invoice & Register Email'}
-                </h2>
-                <p className="text-gray-600 mb-8">
-                  {userProfile 
-                    ? 'Create another invoice using your registered email'
-                    : 'Your email will be automatically saved and included for payment notifications'
-                  }
-                </p>
-                
-                <button
-                  onClick={handleSubmit}
-                  disabled={isPending}
-                  className={`inline-flex items-center px-8 py-4 font-semibold text-lg rounded-2xl transition-all duration-300 shadow-lg transform ${
-                    isPending
-                      ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl hover:-translate-y-1 focus:outline-none focus:ring-4 focus:ring-blue-300 focus:ring-opacity-50'
-                  }`}
-                >
-                  {isPending ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-gray-200" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              {/* Invoice Creation Section */}
+              {!showInvoiceForm ? (
+                <div className="text-center">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                    {userProfile ? 'Create New Invoice' : 'Create Invoice & Register Email'}
+                  </h2>
+                  <p className="text-gray-600 mb-8">
+                    {userProfile 
+                      ? 'Create a professional invoice using your registered email'
+                      : 'Your email will be automatically saved and included for payment notifications'
+                    }
+                  </p>
+                  
+                  <button
+                    onClick={() => {
+                      if (userProfile) {
+                        setShowInvoiceForm(true);
+                      } else {
+                        handleEmailRegistration();
+                      }
+                    }}
+                    disabled={isPending}
+                    className={`inline-flex items-center px-8 py-4 font-semibold text-lg rounded-2xl transition-all duration-300 shadow-lg transform ${
+                      isPending
+                        ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                        : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl hover:-translate-y-1 focus:outline-none focus:ring-4 focus:ring-blue-300 focus:ring-opacity-50'
+                    }`}
+                  >
+                    {isPending ? (
+                      <>
+                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-gray-200" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        {userProfile ? 'Processing...' : 'Registering Email...'}
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        {userProfile ? 'Create Invoice' : 'Register Email & Create Invoice'}
+                      </>
+                    )}
+                  </button>
+                </div>
+              ) : (
+                /* Invoice Form */
+                <div>
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-bold text-gray-900">Create Invoice</h2>
+                    <button
+                      onClick={() => setShowInvoiceForm(false)}
+                      className="text-gray-500 hover:text-gray-700 transition-colors"
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      Create Invoice
-                    </>
-                  )}
-                </button>
-              </div>
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleInvoiceSubmit} className="space-y-6">
+                    <div>
+                      <label htmlFor="recipientEmail" className="block text-sm font-medium text-gray-700 mb-2">
+                        Recipient Email
+                      </label>
+                      <input
+                        type="email"
+                        id="recipientEmail"
+                        value={invoiceData.recipientEmail}
+                        onChange={(e) => setInvoiceData({...invoiceData, recipientEmail: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                        placeholder="client@company.com"
+                        required
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-2">
+                          Amount
+                        </label>
+                        <input
+                          type="number"
+                          id="amount"
+                          step="0.01"
+                          value={invoiceData.amount}
+                          onChange={(e) => setInvoiceData({...invoiceData, amount: e.target.value})}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                          placeholder="100.00"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="currency" className="block text-sm font-medium text-gray-700 mb-2">
+                          Currency
+                        </label>
+                        <select
+                          id="currency"
+                          value={invoiceData.currency}
+                          onChange={(e) => setInvoiceData({...invoiceData, currency: e.target.value})}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                        >
+                          <option value="USDC">USDC</option>
+                          <option value="ETH">ETH</option>
+                          <option value="USDT">USDT</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
+                        Description
+                      </label>
+                      <textarea
+                        id="description"
+                        rows={3}
+                        value={invoiceData.description}
+                        onChange={(e) => setInvoiceData({...invoiceData, description: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                        placeholder="Web development services for Q1 2025"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="dueDate" className="block text-sm font-medium text-gray-700 mb-2">
+                        Due Date
+                      </label>
+                      <input
+                        type="date"
+                        id="dueDate"
+                        value={invoiceData.dueDate}
+                        onChange={(e) => setInvoiceData({...invoiceData, dueDate: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                        required
+                      />
+                    </div>
+
+                    <div className="bg-blue-50 rounded-xl p-4">
+                      <div className="flex items-start space-x-3">
+                        <svg className="w-5 h-5 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <div>
+                          <p className="text-sm font-medium text-blue-800">Email Notifications</p>
+                          <p className="text-xs text-blue-600 mt-1">
+                            Both you ({userProfile?.email}) and the recipient will receive email notifications when the payment is completed.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={isCreatingInvoice}
+                      className={`w-full py-4 font-semibold text-lg rounded-2xl transition-all duration-300 shadow-lg transform ${
+                        isCreatingInvoice
+                          ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                          : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl hover:-translate-y-1 focus:outline-none focus:ring-4 focus:ring-blue-300 focus:ring-opacity-50'
+                      }`}
+                    >
+                      {isCreatingInvoice ? (
+                        <>
+                          <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-gray-200 inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Creating Invoice...
+                        </>
+                      ) : (
+                        'Create Invoice'
+                      )}
+                    </button>
+                  </form>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -383,13 +573,15 @@ export default function Home() {
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
                 </div>
-                <h3 className="text-2xl font-bold text-green-800 mb-4">Invoice Created Successfully!</h3>
+                <h3 className="text-2xl font-bold text-green-800 mb-4">
+                  {userProfile ? 'Invoice Created Successfully!' : 'Profile Created & Invoice Generated!'}
+                </h3>
                 {result.email && (
                   <div className="bg-white/50 rounded-xl p-4 mb-4">
                     <p className="text-green-700">
                       <span className="font-semibold">Email for notifications:</span> {result.email}
                     </p>
-                    {result.saved && (
+                    {result.saved && !userProfile && (
                       <p className="text-sm text-green-600 mt-2">
                         ✓ Email saved to your profile for future invoices
                       </p>
