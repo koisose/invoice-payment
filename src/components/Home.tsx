@@ -20,6 +20,7 @@ export default function Home() {
     address: true
   });
   const [result, setResult] = useState<ProfileResult | null>(null);
+  const [copySuccess, setCopySuccess] = useState(false);
 
   const { sendCalls, data, error, isPending } = useSendCalls();
   const { connect, connectors } = useConnect();
@@ -48,6 +49,19 @@ export default function Home() {
         return "Sepolia";
       default:
         return `Chain ${chainId}`;
+    }
+  }
+
+  // Function to copy address to clipboard
+  async function copyAddress() {
+    if (!address) return;
+    
+    try {
+      await navigator.clipboard.writeText(address);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000); // Reset after 2 seconds
+    } catch (err) {
+      console.error('Failed to copy address:', err);
     }
   }
 
@@ -164,9 +178,28 @@ export default function Home() {
           </div>
         ) : (
           <div style={{ marginBottom: "20px", padding: "15px", backgroundColor: "#e8f5e8", borderRadius: "8px", border: "1px solid #c3e6c3" }}>
-            <p style={{ margin: "0 0 8px 0", color: "#2d5a2d", fontSize: "14px" }}>
-              <strong>Connected:</strong> {address?.slice(0, 6)}...{address?.slice(-4)}
-            </p>
+            <div style={{ display: "flex", alignItems: "center", marginBottom: "8px" }}>
+              <span style={{ color: "#2d5a2d", fontSize: "14px", marginRight: "8px" }}>
+                <strong>Connected:</strong> {address?.slice(0, 6)}...{address?.slice(-4)}
+              </span>
+              <button
+                onClick={copyAddress}
+                style={{
+                  padding: "4px 8px",
+                  backgroundColor: copySuccess ? "#28a745" : "#6c757d",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "4px",
+                  fontSize: "12px",
+                  cursor: "pointer",
+                  fontWeight: "500",
+                  transition: "background-color 0.2s"
+                }}
+                title="Copy full address"
+              >
+                {copySuccess ? "Copied!" : "Copy"}
+              </button>
+            </div>
             <p style={{ margin: "0 0 8px 0", color: "#2d5a2d", fontSize: "14px" }}>
               <strong>Chain:</strong> {getChainName(chainId)} ({chainId})
             </p>
