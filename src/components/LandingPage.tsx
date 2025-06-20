@@ -20,7 +20,7 @@ export default function LandingPage() {
           <img 
             src="/image.png" 
             alt="Powered by Bolt" 
-            className="w-12 h-12 md:w-16 md:h-16 rounded-full"
+            className="w-16 h-16 md:w-20 md:h-20 rounded-full"
           />
         </a>
       </div>
