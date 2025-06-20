@@ -18,7 +18,6 @@ interface ProfileResult {
 
 interface InvoiceData {
   amount: string;
-  currency: string;
   description: string;
   dueDate: string;
 }
@@ -35,7 +34,6 @@ export default function Home() {
   const [showInvoiceForm, setShowInvoiceForm] = useState(false);
   const [invoiceData, setInvoiceData] = useState<InvoiceData>({
     amount: '',
-    currency: 'USDC',
     description: '',
     dueDate: ''
   });
@@ -252,7 +250,6 @@ export default function Home() {
       // Reset form
       setInvoiceData({
         amount: '',
-        currency: 'USDC',
         description: '',
         dueDate: ''
       });
@@ -456,37 +453,21 @@ export default function Home() {
                   </div>
 
                   <form onSubmit={handleInvoiceSubmit} className="space-y-6">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-2">
-                          Amount
-                        </label>
-                        <input
-                          type="number"
-                          id="amount"
-                          step="0.01"
-                          value={invoiceData.amount}
-                          onChange={(e) => setInvoiceData({...invoiceData, amount: e.target.value})}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                          placeholder="100.00"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="currency" className="block text-sm font-medium text-gray-700 mb-2">
-                          Currency
-                        </label>
-                        <select
-                          id="currency"
-                          value={invoiceData.currency}
-                          onChange={(e) => setInvoiceData({...invoiceData, currency: e.target.value})}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                        >
-                          <option value="USDC">USDC</option>
-                          <option value="ETH">ETH</option>
-                          <option value="USDT">USDT</option>
-                        </select>
-                      </div>
+                    <div>
+                      <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-2">
+                        Amount (USDC)
+                      </label>
+                      <input
+                        type="number"
+                        id="amount"
+                        step="0.01"
+                        value={invoiceData.amount}
+                        onChange={(e) => setInvoiceData({...invoiceData, amount: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                        placeholder="100.00"
+                        required
+                      />
+                      <p className="text-xs text-gray-500 mt-1">All invoices are denominated in USDC</p>
                     </div>
 
                     <div>
