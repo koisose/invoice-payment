@@ -18,6 +18,19 @@ export interface UserProfile {
   updated_at: string
 }
 
+export interface Invoice {
+  id: string
+  creator_wallet_address: string
+  recipient_address: string | null
+  amount: number
+  description: string
+  status: 'pending' | 'paid' | 'expired'
+  payment_hash: string | null
+  created_at: string
+  updated_at: string
+  expires_at: string | null
+}
+
 // Database functions
 export const saveUserProfile = async (walletAddress: string, email: string): Promise<UserProfile> => {
   const { data, error } = await supabase
@@ -56,6 +69,92 @@ export const getUserProfile = async (walletAddress: string): Promise<UserProfile
       return null
     }
     console.error('Error fetching user profile:', error)
+    throw error
+  }
+
+  return data
+}
+
+// Invoice functions
+export const createInvoice = async (
+  creatorWalletAddress: string,
+  amount: number,
+  description: string,
+  recipientAddress?: string
+): Promise<Invoice> => {
+  const { data, error } = await supabase
+    .from('invoices')
+    .insert({
+      creator_wallet_address: creatorWalletAddress.toLowerCase(),
+      recipient_address: recipientAddress?.toLowerCase() || null,
+      amount,
+      description,
+      status: 'pending'
+    })
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error creating invoice:', error)
+    throw error
+  }
+
+  return data
+}
+
+export const getInvoice = async (invoiceId: string): Promise<Invoice | null> => {
+  const { data, error } = await supabase
+    .from('invoices')
+    .select('*')
+    .eq('id', invoiceId)
+    .single()
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      // No rows returned - invoice doesn't exist
+      return null
+    }
+    console.error('Error fetching invoice:', error)
+    throw error
+  }
+
+  return data
+}
+
+export const getUserInvoices = async (walletAddress: string): Promise<Invoice[]> => {
+  const { data, error } = await supabase
+    .from('invoices')
+    .select('*')
+    .eq('creator_wallet_address', walletAddress.toLowerCase())
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching user invoices:', error)
+    throw error
+  }
+
+  return data || []
+}
+
+export const updateInvoiceStatus = async (
+  invoiceId: string,
+  status: 'pending' | 'paid' | 'expired',
+  paymentHash?: string
+): Promise<Invoice> => {
+  const updateData: any = { status }
+  if (paymentHash) {
+    updateData.payment_hash = paymentHash
+  }
+
+  const { data, error } = await supabase
+    .from('invoices')
+    .update(updateData)
+    .eq('id', invoiceId)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error updating invoice status:', error)
     throw error
   }
 

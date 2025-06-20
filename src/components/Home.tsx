@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { parseUnits, formatEther, encodeFunctionData, erc20Abi } from "viem";
 import { useConnect, useSendCalls, useAccount, useBalance, useChainId, useDisconnect } from "wagmi";
-import { saveUserProfile, getUserProfile, UserProfile } from "../lib/supabase";
+import { saveUserProfile, getUserProfile, UserProfile, createInvoice, Invoice } from "../lib/supabase";
 
 interface DataRequest {
   email: boolean;
@@ -14,6 +14,8 @@ interface ProfileResult {
   address?: string;
   error?: string;
   saved?: boolean;
+  invoice?: Invoice;
+  shareLink?: string;
 }
 
 interface InvoiceData {
@@ -138,6 +140,18 @@ export default function Home() {
     }
   }
 
+  // Function to copy share link to clipboard
+  async function copyShareLink(link: string) {
+    try {
+      await navigator.clipboard.writeText(link);
+      // You could add a separate state for this if needed
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy share link:', err);
+    }
+  }
+
   // Function to disconnect wallet
   function handleDisconnect() {
     disconnect();
@@ -233,16 +247,27 @@ export default function Home() {
   // Handle invoice form submission
   async function handleInvoiceSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!address || !userProfile) return;
+
     setIsCreatingInvoice(true);
 
     try {
-      // Simulate invoice creation process
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Create invoice in database
+      const invoice = await createInvoice(
+        address,
+        parseFloat(invoiceData.amount),
+        invoiceData.description
+      );
+
+      // Generate share link
+      const shareLink = `${window.location.origin}/invoice/${invoice.id}`;
       
       setResult({
         success: true,
-        email: userProfile?.email || '',
-        saved: true
+        email: userProfile.email,
+        saved: true,
+        invoice,
+        shareLink
       });
       
       // Reset form
@@ -539,8 +564,59 @@ export default function Home() {
                   </svg>
                 </div>
                 <h3 className="text-2xl font-bold text-green-800 mb-4">
-                  {userProfile ? 'Invoice Created Successfully!' : 'Profile Created & Invoice Generated!'}
+                  {result.invoice ? 'Invoice Created Successfully!' : userProfile ? 'Invoice Created Successfully!' : 'Profile Created & Invoice Generated!'}
                 </h3>
+                
+                {/* Invoice Details */}
+                {result.invoice && (
+                  <div className="bg-white/50 rounded-xl p-6 mb-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+                      <div>
+                        <p className="text-green-700">
+                          <span className="font-semibold">Invoice ID:</span> {result.invoice.id.slice(0, 8)}...
+                        </p>
+                        <p className="text-green-700">
+                          <span className="font-semibold">Amount:</span> {result.invoice.amount} USDC
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-green-700">
+                          <span className="font-semibold">Status:</span> {result.invoice.status.toUpperCase()}
+                        </p>
+                        <p className="text-green-700">
+                          <span className="font-semibold">Created:</span> {new Date(result.invoice.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-4">
+                      <p className="text-green-700">
+                        <span className="font-semibold">Description:</span> {result.invoice.description}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Share Link */}
+                {result.shareLink && (
+                  <div className="bg-white/50 rounded-xl p-6 mb-4">
+                    <p className="text-green-700 font-semibold mb-3">Share this link with your client:</p>
+                    <div className="flex items-center space-x-2 bg-gray-100 rounded-lg p-3">
+                      <input
+                        type="text"
+                        value={result.shareLink}
+                        readOnly
+                        className="flex-1 bg-transparent text-gray-700 text-sm focus:outline-none"
+                      />
+                      <button
+                        onClick={() => copyShareLink(result.shareLink!)}
+                        className="px-3 py-1 bg-green-500 text-white rounded-lg text-sm font-medium hover:bg-green-600 transition-colors duration-200"
+                      >
+                        Copy Link
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {result.email && (
                   <div className="bg-white/50 rounded-xl p-4 mb-4">
                     <p className="text-green-700">
