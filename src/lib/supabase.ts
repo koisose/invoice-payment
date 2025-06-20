@@ -160,3 +160,35 @@ export const updateInvoiceStatus = async (
 
   return data
 }
+
+// New function to update invoice with complete payment details
+export const updateInvoiceWithPayment = async (
+  invoiceId: string,
+  recipientAddress: string,
+  paymentHash: string
+): Promise<Invoice> => {
+  console.log('Updating invoice with payment details:', {
+    invoiceId,
+    recipientAddress,
+    paymentHash,
+    status: 'paid'
+  });
+
+  const { data, error } = await supabase
+    .from('invoices')
+    .update({
+      status: 'paid',
+      recipient_address: recipientAddress.toLowerCase(),
+      payment_hash: paymentHash
+    })
+    .eq('id', invoiceId)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error updating invoice with payment details:', error)
+    throw error
+  }
+
+  return data
+}

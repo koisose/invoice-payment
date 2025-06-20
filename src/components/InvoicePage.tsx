@@ -61,13 +61,15 @@ export default function InvoicePage() {
 
   // Listen for sendCalls success
   useEffect(() => {
-    if (isSuccess && data && invoice) {
+    if (isSuccess && data && invoice && address) {
       console.log('Payment transaction successful:', data);
+      console.log('Transaction hash:', data.transactionHash);
+      console.log('Payer address:', address);
       
-      // Update invoice status to paid immediately
-      updateInvoiceStatus(invoice.id, 'paid', data.transactionHash || '')
+      // Update invoice with recipient address and payment hash
+      updateInvoiceWithPayment(invoice.id, address, data.transactionHash || '')
         .then((updatedInvoice) => {
-          console.log('Invoice status updated to paid:', updatedInvoice);
+          console.log('Invoice updated with payment details:', updatedInvoice);
           setInvoice(updatedInvoice);
           
           // Set initial success result
@@ -77,14 +79,14 @@ export default function InvoicePage() {
           });
         })
         .catch((err) => {
-          console.error('Error updating invoice status:', err);
+          console.error('Error updating invoice with payment details:', err);
           setPaymentResult({
             success: false,
-            error: "Payment processed but failed to update invoice status"
+            error: "Payment processed but failed to update invoice"
           });
         });
     }
-  }, [isSuccess, data, invoice]);
+  }, [isSuccess, data, invoice, address]);
 
   // Listen for sendCalls error
   useEffect(() => {
@@ -164,6 +166,38 @@ export default function InvoicePage() {
     }
   }
 
+  // New function to update invoice with payment details
+  async function updateInvoiceWithPayment(
+    invoiceId: string,
+    recipientAddress: string,
+    paymentHash: string
+  ): Promise<Invoice> {
+    console.log('Updating invoice with payment details:', {
+      invoiceId,
+      recipientAddress,
+      paymentHash,
+      status: 'paid'
+    });
+
+    const { data, error } = await supabase
+      .from('invoices')
+      .update({
+        status: 'paid',
+        recipient_address: recipientAddress.toLowerCase(),
+        payment_hash: paymentHash
+      })
+      .eq('id', invoiceId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating invoice with payment details:', error);
+      throw error;
+    }
+
+    return data;
+  }
+
   function getCallbackURL() {
     return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/data-validation`;
   }
@@ -210,6 +244,10 @@ export default function InvoicePage() {
 
     try {
       console.log('Initiating payment for invoice:', invoice.id);
+      console.log('Payment amount:', invoice.amount, 'USDC');
+      console.log('Recipient:', invoice.creator_wallet_address);
+      console.log('Payer:', address);
+      
       setPaymentResult(null);
 
       // Send USDC payment to the invoice creator
@@ -347,12 +385,34 @@ export default function InvoicePage() {
             <p className="text-gray-900 bg-gray-50 rounded-xl p-4">{invoice.description}</p>
           </div>
 
-          <div>
+          <div className="mb-6">
             <p className="text-sm font-medium text-gray-500 mb-2">Pay To</p>
             <p className="text-gray-900 font-mono text-sm bg-gray-50 rounded-xl p-4 break-all">
               {invoice.creator_wallet_address}
             </p>
           </div>
+
+          {/* Show payment details if invoice is paid */}
+          {invoice.status === 'paid' && (
+            <>
+              {invoice.recipient_address && (
+                <div className="mb-6">
+                  <p className="text-sm font-medium text-gray-500 mb-2">Paid By</p>
+                  <p className="text-gray-900 font-mono text-sm bg-gray-50 rounded-xl p-4 break-all">
+                    {invoice.recipient_address}
+                  </p>
+                </div>
+              )}
+              {invoice.payment_hash && (
+                <div>
+                  <p className="text-sm font-medium text-gray-500 mb-2">Transaction Hash</p>
+                  <p className="text-gray-900 font-mono text-sm bg-gray-50 rounded-xl p-4 break-all">
+                    {invoice.payment_hash}
+                  </p>
+                </div>
+              )}
+            </>
+          )}
         </div>
 
         {/* Payment Section - Only show if invoice is pending and no successful payment */}
