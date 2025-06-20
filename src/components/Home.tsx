@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { parseUnits } from "viem";
-import { useConnect, useSendCalls } from "wagmi";
+import { useConnect, useSendCalls, useAccount } from "wagmi";
 
 interface DataRequest {
   email: boolean;
@@ -22,7 +22,8 @@ export default function Home() {
   const [result, setResult] = useState<ProfileResult | null>(null);
 
   const { sendCalls, data, error, isPending } = useSendCalls();
-  const { connect, connectors } = useConnect()
+  const { connect, connectors } = useConnect();
+  const { isConnected, address } = useAccount();
 
   // Function to get callback URL - using Supabase Edge Function
   function getCallbackURL() {
@@ -108,6 +109,11 @@ export default function Home() {
     }
   }
 
+  // Handle wallet connection
+  function handleConnect() {
+    connect({ connector: connectors[0] });
+  }
+
   return (
     <div style={{ maxWidth: "600px", margin: "0 auto", padding: "20px" }}>
       <h1>Profiles Demo</h1>
@@ -115,6 +121,33 @@ export default function Home() {
       {/* Data Request Form */}
       <div style={{ marginTop: "20px" }}>
         <h2>Checkout</h2>
+
+        {/* Connect Wallet Button */}
+        {!isConnected ? (
+          <div style={{ marginBottom: "20px" }}>
+            <button
+              onClick={handleConnect}
+              style={{
+                padding: "12px 24px",
+                backgroundColor: "#0052FF",
+                color: "white",
+                border: "none",
+                borderRadius: "8px",
+                fontSize: "16px",
+                cursor: "pointer",
+                fontWeight: "500"
+              }}
+            >
+              Connect with Coinbase Smart Wallet
+            </button>
+          </div>
+        ) : (
+          <div style={{ marginBottom: "20px", padding: "10px", backgroundColor: "#e8f5e8", borderRadius: "5px" }}>
+            <p style={{ margin: 0, color: "#2d5a2d" }}>
+              <strong>Connected:</strong> {address?.slice(0, 6)}...{address?.slice(-4)}
+            </p>
+          </div>
+        )}
 
         <div>
           <label>
@@ -140,7 +173,11 @@ export default function Home() {
 
         <button
           onClick={handleSubmit}
-          disabled={isPending}
+          disabled={isPending || !isConnected}
+          style={{
+            opacity: (!isConnected || isPending) ? 0.6 : 1,
+            cursor: (!isConnected || isPending) ? "not-allowed" : "pointer"
+          }}
         >
           {isPending ? "Processing..." : "Checkout"}
         </button>
