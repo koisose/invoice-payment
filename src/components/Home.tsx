@@ -115,15 +115,7 @@ export default function Home() {
     try {
       setResult(null);
 
-      // Build requests array based on checkboxes
-      const requests = [];
-      if (dataToRequest.email) requests.push({ type: "email", optional: false });
-      if (dataToRequest.address) requests.push({ type: "physicalAddress", optional: false });
 
-      if (requests.length === 0) {
-        setResult({ success: false, error: "Select at least one data type" });
-        return;
-      }
 
       // Send calls using wagmi hook - Send 0 ETH to zero address
       sendCalls({
