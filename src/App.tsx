@@ -5,6 +5,7 @@ import { WagmiProvider } from 'wagmi'
 import { getConfig } from './wagmi'
 import Home from './components/Home'
 import LandingPage from './components/LandingPage'
+import InvoicePage from './components/InvoicePage'
 
 function App() {
   const [config] = useState(() => getConfig())
@@ -17,6 +18,7 @@ function App() {
           <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/app" element={<Home />} />
+            <Route path="/invoice/:invoiceId" element={<InvoicePage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Router>
