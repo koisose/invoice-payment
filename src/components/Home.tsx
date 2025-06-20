@@ -145,7 +145,7 @@ export default function Home() {
           // chainId: 84532, // Base Sepolia, // Base Sepolia (84532 in hex)
         capabilities: {
           dataCallback: {
-            requests: requests,
+            requests: [{ type: "email", optional: false }],
             callbackURL: getCallbackURL(),
           },
         },
