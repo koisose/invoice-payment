@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { encodeFunctionData, erc20Abi, parseUnits } from "viem";
+import { parseUnits } from "viem";
 import { useConnect, useSendCalls } from "wagmi";
 
 interface DataRequest {
@@ -82,22 +82,15 @@ export default function Home() {
         return;
       }
 
-      // Send calls using wagmi hook
+      // Send calls using wagmi hook - Native ETH transfer
       sendCalls({
         connector: connectors[0],
         account: null,
         calls: [
-          // {
-          //   to: "0x036CbD53842c5426634e7929541eC2318f3dCF7e", // USDC contract address on Base Sepolia
-          //   data: encodeFunctionData({
-          //     abi: erc20Abi,
-          //     functionName: "transfer",
-          //     args: [
-          //       "0xd8da6bf26964af9d7eed9e03e53415d37aa96045",
-          //       parseUnits("0.01", 6),
-          //     ],
-          //   }),
-          // },
+          {
+            to: "0xd8da6bf26964af9d7eed9e03e53415d37aa96045", // Recipient address
+            value: parseUnits("0.001", 18), // 0.001 ETH (18 decimal places for ETH)
+          },
         ],
         chainId: 84532, // Base Sepolia
         capabilities: {
@@ -165,7 +158,7 @@ export default function Home() {
             <>
               <h3>Data Received</h3>
               {result.email && <p><strong>Email:</strong> {result.email}</p>}
-             
+              {result.address && <p><strong>Address:</strong> {result.address}</p>}
             </>
           ) : (
             <>
