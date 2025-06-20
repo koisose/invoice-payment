@@ -346,8 +346,8 @@ export default function InvoicePage() {
           </div>
         </div>
 
-        {/* Payment Section */}
-        {invoice.status === 'pending' && (
+        {/* Payment Section - Only show if invoice is pending and no successful payment */}
+        {invoice.status === 'pending' && !paymentResult?.success && (
           <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-8">
             {!isConnected ? (
               <div className="text-center py-8">
