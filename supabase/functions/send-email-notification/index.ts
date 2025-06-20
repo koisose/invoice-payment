@@ -121,7 +121,7 @@ Deno.serve(async (req: Request) => {
     if (type === 'payment_confirmation') {
       // Email to invoice creator
       emailData = {
-        from: "Crypto Invoice <noreply@yourdomain.com>", // Replace with your verified domain
+        from: "Crypto Invoice <invoice@uratmangun.fun>",
         to: [creator_email],
         subject: `Payment Received - Invoice ${invoice.id.slice(0, 8)}`,
         html: `
@@ -172,7 +172,7 @@ Deno.serve(async (req: Request) => {
     } else if (type === 'payment_receipt' && payer_email) {
       // Email to payer
       emailData = {
-        from: "Crypto Invoice <noreply@yourdomain.com>", // Replace with your verified domain
+        from: "Crypto Invoice <invoice@uratmangun.fun>",
         to: [payer_email],
         subject: `Payment Confirmation - ${invoice.amount} USDC`,
         html: `
