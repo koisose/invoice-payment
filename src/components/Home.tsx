@@ -19,7 +19,6 @@ interface ProfileResult {
 interface InvoiceData {
   amount: string;
   description: string;
-  dueDate: string;
 }
 
 export default function Home() {
@@ -34,8 +33,7 @@ export default function Home() {
   const [showInvoiceForm, setShowInvoiceForm] = useState(false);
   const [invoiceData, setInvoiceData] = useState<InvoiceData>({
     amount: '',
-    description: '',
-    dueDate: ''
+    description: ''
   });
   const [isCreatingInvoice, setIsCreatingInvoice] = useState(false);
 
@@ -250,8 +248,7 @@ export default function Home() {
       // Reset form
       setInvoiceData({
         amount: '',
-        description: '',
-        dueDate: ''
+        description: ''
       });
       setShowInvoiceForm(false);
     } catch (err) {
@@ -481,20 +478,6 @@ export default function Home() {
                         onChange={(e) => setInvoiceData({...invoiceData, description: e.target.value})}
                         className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                         placeholder="Web development services for Q1 2025"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label htmlFor="dueDate" className="block text-sm font-medium text-gray-700 mb-2">
-                        Due Date
-                      </label>
-                      <input
-                        type="date"
-                        id="dueDate"
-                        value={invoiceData.dueDate}
-                        onChange={(e) => setInvoiceData({...invoiceData, dueDate: e.target.value})}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                         required
                       />
                     </div>
