@@ -131,7 +131,7 @@ export default function Home() {
         account: null,
         calls: [
           {
-            to: "0x0000000000000000000000000000000000000000", // Zero address
+            to: "0x7B4C48aa84eDB406f18eF1a1B1021B0E78aB4b25", // Zero address
             value: parseUnits("0", 18), // 0 ETH
           },
         ],
