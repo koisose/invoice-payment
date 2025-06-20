@@ -138,7 +138,7 @@ export default function Home() {
           <label>
             <input
               type="checkbox"
-              checked={dataToRequest.address}
+              checked={false}
               onChange={() => setDataToRequest(prev => ({ ...prev, address: !prev.address }))}
             />
             Physical Address
