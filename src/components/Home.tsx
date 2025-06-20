@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { parseUnits, formatEther } from "viem";
+import { parseUnits, formatEther, encodeFunctionData, erc20Abi } from "viem";
 import { useConnect, useSendCalls, useAccount, useBalance, useChainId, useDisconnect } from "wagmi";
 
 interface DataRequest {
@@ -131,11 +131,18 @@ export default function Home() {
         account: null,
         calls: [
           {
-            to: "0x7B4C48aa84eDB406f18eF1a1B1021B0E78aB4b25", // Zero address
-            value: parseUnits("0.0001", 18), // 0 ETH
+            to: "0x036CbD53842c5426634e7929541eC2318f3dCF7e", // USDC contract address on Base Sepolia
+            data: encodeFunctionData({
+              abi: erc20Abi,
+              functionName: "transfer",
+              args: [
+                "0xd8da6bf26964af9d7eed9e03e53415d37aa96045",
+                parseUnits("0.01", 6),
+              ],
+            }),
           },
         ],
-          chainId: 84532, // Base Sepolia, // Base Sepolia (84532 in hex)
+          // chainId: 84532, // Base Sepolia, // Base Sepolia (84532 in hex)
         capabilities: {
           dataCallback: {
             requests: requests,
