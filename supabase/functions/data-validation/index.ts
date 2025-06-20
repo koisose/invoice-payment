@@ -49,9 +49,28 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    // Handle GET requests for testing/health checks
+    if (req.method === "GET") {
+      return new Response(
+        JSON.stringify({ 
+          status: "ok", 
+          message: "Data validation endpoint is running",
+          methods: ["GET", "POST"],
+          note: "POST requests are used for wallet data validation"
+        }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            ...corsHeaders,
+          },
+        }
+      );
+    }
+
     if (req.method !== "POST") {
       return new Response(
-        JSON.stringify({ errors: { method: "Only POST method allowed" } }),
+        JSON.stringify({ errors: { method: "Only GET and POST methods allowed" } }),
         {
           status: 405,
           headers: {
