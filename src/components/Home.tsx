@@ -24,9 +24,9 @@ export default function Home() {
   const { sendCalls, data, error, isPending } = useSendCalls();
   const { connect, connectors } = useConnect()
 
-  // Function to get callback URL - replace in production
+  // Function to get callback URL - using Supabase Edge Function
   function getCallbackURL() {
-    return "/api/data-validation";
+    return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/data-validation`;
   }
 
   // Handle response data when sendCalls completes
