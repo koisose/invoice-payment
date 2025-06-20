@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { parseUnits, formatEther } from "viem";
-import { useConnect, useSendCalls, useAccount, useBalance } from "wagmi";
+import { useConnect, useSendCalls, useAccount, useBalance, useChainId } from "wagmi";
 
 interface DataRequest {
   email: boolean;
@@ -24,6 +24,7 @@ export default function Home() {
   const { sendCalls, data, error, isPending } = useSendCalls();
   const { connect, connectors } = useConnect();
   const { isConnected, address } = useAccount();
+  const chainId = useChainId();
   const { data: balance } = useBalance({
     address: address,
     chainId: 84532, // Base Sepolia
@@ -32,6 +33,22 @@ export default function Home() {
   // Function to get callback URL - using Supabase Edge Function
   function getCallbackURL() {
     return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/data-validation`;
+  }
+
+  // Function to get chain name
+  function getChainName(chainId: number) {
+    switch (chainId) {
+      case 84532:
+        return "Base Sepolia";
+      case 8453:
+        return "Base";
+      case 1:
+        return "Ethereum";
+      case 11155111:
+        return "Sepolia";
+      default:
+        return `Chain ${chainId}`;
+    }
   }
 
   // Handle response data when sendCalls completes
@@ -149,6 +166,9 @@ export default function Home() {
           <div style={{ marginBottom: "20px", padding: "15px", backgroundColor: "#e8f5e8", borderRadius: "8px", border: "1px solid #c3e6c3" }}>
             <p style={{ margin: "0 0 8px 0", color: "#2d5a2d", fontSize: "14px" }}>
               <strong>Connected:</strong> {address?.slice(0, 6)}...{address?.slice(-4)}
+            </p>
+            <p style={{ margin: "0 0 8px 0", color: "#2d5a2d", fontSize: "14px" }}>
+              <strong>Chain:</strong> {getChainName(chainId)} ({chainId})
             </p>
             <p style={{ margin: 0, color: "#2d5a2d", fontSize: "14px" }}>
               <strong>Balance:</strong> {balance ? `${parseFloat(formatEther(balance.value)).toFixed(4)} ETH` : "Loading..."}
