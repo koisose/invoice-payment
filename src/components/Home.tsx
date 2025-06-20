@@ -53,6 +53,25 @@ export default function Home() {
     chainId: 0x14A34, // Base Sepolia (84532 in hex)
   });
 
+  // Function to mask email address
+  function maskEmail(email: string): string {
+    const [localPart, domain] = email.split('@');
+    if (!domain) return email; // Invalid email format
+    
+    const maskedLocal = localPart.length > 2 
+      ? localPart.substring(0, 2) + '*'.repeat(Math.max(1, localPart.length - 2))
+      : '*'.repeat(localPart.length);
+    
+    const domainParts = domain.split('.');
+    const maskedDomain = domainParts.map(part => 
+      part.length > 2 
+        ? part.substring(0, 1) + '*'.repeat(Math.max(1, part.length - 2)) + part.slice(-1)
+        : '*'.repeat(part.length)
+    ).join('.');
+    
+    return `${maskedLocal}@${maskedDomain}`;
+  }
+
   // Load user profile when wallet connects
   useEffect(() => {
     if (isConnected && address) {
@@ -369,7 +388,7 @@ export default function Home() {
                   </div>
                   <div className="bg-white/50 rounded-xl p-4">
                     <p className="text-blue-700">
-                      <span className="font-semibold">Registered Email:</span> {userProfile.email}
+                      <span className="font-semibold">Registered Email:</span> {maskEmail(userProfile.email)}
                     </p>
                     <p className="text-xs text-blue-600 mt-2">
                       Registered on {new Date(userProfile.created_at).toLocaleDateString()}
@@ -525,7 +544,7 @@ export default function Home() {
                         <div>
                           <p className="text-sm font-medium text-blue-800">Email Notifications</p>
                           <p className="text-xs text-blue-600 mt-1">
-                            Both you ({userProfile?.email}) and the recipient will receive email notifications when the payment is completed.
+                            Both you ({userProfile?.email ? maskEmail(userProfile.email) : 'your email'}) and the recipient will receive email notifications when the payment is completed.
                           </p>
                         </div>
                       </div>
@@ -579,7 +598,7 @@ export default function Home() {
                 {result.email && (
                   <div className="bg-white/50 rounded-xl p-4 mb-4">
                     <p className="text-green-700">
-                      <span className="font-semibold">Email for notifications:</span> {result.email}
+                      <span className="font-semibold">Email for notifications:</span> {maskEmail(result.email)}
                     </p>
                     {result.saved && !userProfile && (
                       <p className="text-sm text-green-600 mt-2">
