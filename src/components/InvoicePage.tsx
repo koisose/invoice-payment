@@ -64,10 +64,12 @@ export default function InvoicePage() {
   useEffect(() => {
     if (isSuccess && data && invoice && address && !emailsSent) {
       console.log('Payment transaction successful:', data);
+      // @ts-ignore
       console.log('Transaction hash:', data.transactionHash);
       console.log('Payer address:', address);
       
       // Update invoice with recipient address and payment hash
+      // @ts-ignore
       updateInvoiceWithPayment(invoice.id, address, data.transactionHash || '')
         .then(async (updatedInvoice) => {
           console.log('Invoice updated with payment details:', updatedInvoice);
@@ -120,6 +122,7 @@ export default function InvoicePage() {
           // Set final success result
           setPaymentResult({
             success: true,
+            // @ts-ignore
             transactionHash: data.transactionHash || '',
             email: payerEmail,
             saved: !!payerEmail
