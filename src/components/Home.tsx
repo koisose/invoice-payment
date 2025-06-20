@@ -26,7 +26,7 @@ export default function Home() {
 
   // Function to get callback URL - replace in production
   function getCallbackURL() {
-    return "https://your-ngrok-url.ngrok-free.app/api/data-validation";
+    return "/api/data-validation";
   }
 
   // Handle response data when sendCalls completes
