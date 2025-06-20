@@ -192,3 +192,42 @@ export const updateInvoiceWithPayment = async (
 
   return data
 }
+
+// Email notification functions
+export const sendEmailNotification = async (
+  type: 'payment_confirmation' | 'payment_receipt',
+  invoice: Invoice,
+  creatorEmail: string,
+  payerEmail?: string
+): Promise<boolean> => {
+  try {
+    const emailRequest = {
+      type,
+      invoice,
+      creator_email: creatorEmail,
+      payer_email: payerEmail
+    };
+
+    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email-notification`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify(emailRequest),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      console.error('Email notification failed:', result);
+      return false;
+    }
+
+    console.log('Email notification sent successfully:', result);
+    return true;
+  } catch (error) {
+    console.error('Error sending email notification:', error);
+    return false;
+  }
+}

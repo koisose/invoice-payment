@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { parseUnits, formatEther, encodeFunctionData, erc20Abi } from "viem";
 import { useConnect, useSendCalls, useAccount, useBalance, useChainId, useDisconnect, useReadContract } from "wagmi";
-import { getInvoice, updateInvoiceWithPayment, saveUserProfile, getUserProfile, Invoice, UserProfile } from "../lib/supabase";
+import { getInvoice, updateInvoiceWithPayment, saveUserProfile, getUserProfile, sendEmailNotification, Invoice, UserProfile } from "../lib/supabase";
 
 interface PaymentResult {
   success: boolean;
@@ -68,9 +68,25 @@ export default function InvoicePage() {
       
       // Update invoice with recipient address and payment hash
       updateInvoiceWithPayment(invoice.id, address, data.transactionHash || '')
-        .then((updatedInvoice) => {
+        .then(async (updatedInvoice) => {
           console.log('Invoice updated with payment details:', updatedInvoice);
           setInvoice(updatedInvoice);
+          
+          // Get creator's email for notification
+          try {
+            const creatorProfile = await getUserProfile(updatedInvoice.creator_wallet_address);
+            if (creatorProfile?.email) {
+              // Send payment confirmation email to creator
+              await sendEmailNotification(
+                'payment_confirmation',
+                updatedInvoice,
+                creatorProfile.email
+              );
+              console.log('Payment confirmation email sent to creator');
+            }
+          } catch (emailError) {
+            console.error('Error sending creator notification:', emailError);
+          }
           
           // Set initial success result
           setPaymentResult({
@@ -102,7 +118,7 @@ export default function InvoicePage() {
 
   // Handle email data callback (secondary effect for email processing)
   useEffect(() => {
-    if (data?.capabilities?.dataCallback && paymentResult?.success) {
+    if (data?.capabilities?.dataCallback && paymentResult?.success && invoice) {
       const callbackData = data.capabilities.dataCallback;
       
       // Extract email if provided
@@ -110,16 +126,29 @@ export default function InvoicePage() {
         console.log('Processing email from callback:', callbackData.email);
         
         // Save email to user profile
-        saveProfile(callbackData.email).then((saved) => {
+        saveProfile(callbackData.email).then(async (saved) => {
           setPaymentResult(prev => prev ? {
             ...prev,
             email: callbackData.email,
             saved
           } : null);
+
+          // Send payment receipt email to payer
+          try {
+            await sendEmailNotification(
+              'payment_receipt',
+              invoice,
+              '', // Creator email not needed for receipt
+              callbackData.email
+            );
+            console.log('Payment receipt email sent to payer');
+          } catch (emailError) {
+            console.error('Error sending payer receipt:', emailError);
+          }
         });
       }
     }
-  }, [data, paymentResult?.success, address]);
+  }, [data, paymentResult?.success, address, invoice]);
 
   async function loadInvoice() {
     if (!invoiceId) return;
