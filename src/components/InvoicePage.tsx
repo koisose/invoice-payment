@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { parseUnits, formatEther, encodeFunctionData, erc20Abi } from "viem";
 import { useConnect, useSendCalls, useAccount, useBalance, useChainId, useDisconnect, useReadContract } from "wagmi";
-import { getInvoice, updateInvoiceStatus, saveUserProfile, getUserProfile, Invoice, UserProfile } from "../lib/supabase";
+import { getInvoice, updateInvoiceWithPayment, saveUserProfile, getUserProfile, Invoice, UserProfile } from "../lib/supabase";
 
 interface PaymentResult {
   success: boolean;
@@ -80,9 +80,10 @@ export default function InvoicePage() {
         })
         .catch((err) => {
           console.error('Error updating invoice with payment details:', err);
+          console.error('Full error object:', JSON.stringify(err, null, 2));
           setPaymentResult({
             success: false,
-            error: "Payment processed but failed to update invoice"
+            error: `Database update failed: ${err.message || 'Unknown error'}`
           });
         });
     }
@@ -164,38 +165,6 @@ export default function InvoicePage() {
       console.error('Error saving user profile:', error);
       return false;
     }
-  }
-
-  // New function to update invoice with payment details
-  async function updateInvoiceWithPayment(
-    invoiceId: string,
-    recipientAddress: string,
-    paymentHash: string
-  ): Promise<Invoice> {
-    console.log('Updating invoice with payment details:', {
-      invoiceId,
-      recipientAddress,
-      paymentHash,
-      status: 'paid'
-    });
-
-    const { data, error } = await supabase
-      .from('invoices')
-      .update({
-        status: 'paid',
-        recipient_address: recipientAddress.toLowerCase(),
-        payment_hash: paymentHash
-      })
-      .eq('id', invoiceId)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error updating invoice with payment details:', error);
-      throw error;
-    }
-
-    return data;
   }
 
   function getCallbackURL() {
