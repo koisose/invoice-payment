@@ -82,14 +82,14 @@ export default function Home() {
         return;
       }
 
-      // Send calls using wagmi hook - Native ETH transfer
+      // Send calls using wagmi hook - Send 0 ETH to zero address
       sendCalls({
         connector: connectors[0],
         account: null,
         calls: [
           {
-            to: "0xd8da6bf26964af9d7eed9e03e53415d37aa96045", // Recipient address
-            value: parseUnits("0.001", 18), // 0.001 ETH (18 decimal places for ETH)
+            to: "0x0000000000000000000000000000000000000000", // Zero address
+            value: parseUnits("0", 18), // 0 ETH
           },
         ],
         chainId: 84532, // Base Sepolia
