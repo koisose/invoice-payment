@@ -78,7 +78,7 @@ Deno.serve(async (req: Request) => {
           calls: requestData.calls,
           chainId: requestData.chainId,
           capabilities: requestData.capabilities,
-        }, }),
+        } }),
         {
           status: 400,
           headers: {
