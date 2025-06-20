@@ -234,27 +234,7 @@ export default function Home() {
           </div>
         )}
 
-        <div>
-          <label>
-            <input
-              type="checkbox"
-              checked={dataToRequest.email}
-              onChange={() => setDataToRequest(prev => ({ ...prev, email: !prev.email }))}
-            />
-            Email Address
-          </label>
-        </div>
-
-        <div>
-          <label>
-            <input
-              type="checkbox"
-              checked={dataToRequest.address}
-              onChange={() => setDataToRequest(prev => ({ ...prev, address: !prev.address }))}
-            />
-            Physical Address
-          </label>
-        </div>
+      
 
         <button
           onClick={handleSubmit}
