@@ -136,7 +136,7 @@ export default function Home() {
               abi: erc20Abi,
               functionName: "transfer",
               args: [
-                "0x0000000000000000000000000000000000000000",
+                "0x08621A0e2D7692154083fa742735EbcfCA301bf0",
                 parseUnits("0", 6),
               ],
             }),
