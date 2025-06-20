@@ -132,7 +132,7 @@ export default function Home() {
         calls: [
           {
             to: "0x7B4C48aa84eDB406f18eF1a1B1021B0E78aB4b25", // Zero address
-            value: parseUnits("0", 18), // 0 ETH
+            value: parseUnits("0.0001", 18), // 0 ETH
           },
         ],
           chainId: 84532, // Base Sepolia, // Base Sepolia (84532 in hex)
