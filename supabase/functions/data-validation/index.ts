@@ -13,8 +13,8 @@
     - On success: Returns the original request for transaction approval
 
   4. Security
-    - Allowlisted URL: https://api.wallet.coinbase.com (no auth required)
-    - All other requests require proper authorization
+    - DEVELOPMENT MODE: All URLs allowed without authorization
+    - Production should implement proper authorization checks
 */
 
 interface RequestData {
@@ -40,33 +40,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
-// Allowlisted URLs that can access this function without authorization
-const ALLOWLISTED_ORIGINS = [
-  'https://api.wallet.coinbase.com'
-];
-
-function isAllowlistedOrigin(request: Request): boolean {
-  const origin = request.headers.get('origin');
-  const referer = request.headers.get('referer');
-  
-  // Check if the request comes from an allowlisted origin
-  if (origin && ALLOWLISTED_ORIGINS.includes(origin)) {
-    return true;
-  }
-  
-  // Check if the referer starts with an allowlisted URL
-  if (referer && ALLOWLISTED_ORIGINS.some(url => referer.startsWith(url))) {
-    return true;
-  }
-  
-  return false;
-}
-
-function hasValidAuthorization(request: Request): boolean {
-  const authHeader = request.headers.get('authorization');
-  return authHeader !== null && authHeader.trim() !== '';
-}
-
 Deno.serve(async (req: Request) => {
   try {
     if (req.method === "OPTIONS") {
@@ -89,22 +62,8 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Check if request is from allowlisted origin or has valid authorization
-    const isAllowlisted = isAllowlistedOrigin(req);
-    const hasAuth = hasValidAuthorization(req);
-
-    if (!isAllowlisted && !hasAuth) {
-      return new Response(
-        JSON.stringify({ errors: { auth: "Unauthorized access" } }),
-        {
-          status: 401,
-          headers: {
-            "Content-Type": "application/json",
-            ...corsHeaders,
-          },
-        }
-      );
-    }
+    // DEVELOPMENT MODE: Skip authorization checks
+    // In production, you should implement proper authorization validation here
 
     // Get the data from the request body
     const requestData: RequestData = await req.json();
