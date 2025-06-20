@@ -29,7 +29,7 @@ export default function Home() {
   const chainId = useChainId();
   const { data: balance } = useBalance({
     address: address,
-    chainId: 84532, // Base Sepolia
+    chainId: 0x14A34, // Base Sepolia (84532 in hex)
   });
 
   // Function to get callback URL - using Supabase Edge Function
@@ -40,13 +40,13 @@ export default function Home() {
   // Function to get chain name
   function getChainName(chainId: number) {
     switch (chainId) {
-      case 84532:
+      case 0x14A34: // 84532 in hex
         return "Base Sepolia";
-      case 8453:
+      case 0x2105: // 8453 in hex
         return "Base";
-      case 1:
+      case 0x1: // 1 in hex
         return "Ethereum";
-      case 11155111:
+      case 0xAA36A7: // 11155111 in hex
         return "Sepolia";
       default:
         return `Chain ${chainId}`;
@@ -135,7 +135,7 @@ export default function Home() {
             value: parseUnits("0", 18), // 0 ETH
           },
         ],
-        chainId: 84532, // Base Sepolia
+        chainId: 0x14A34, // Base Sepolia (84532 in hex)
         capabilities: {
           dataCallback: {
             requests: requests,
