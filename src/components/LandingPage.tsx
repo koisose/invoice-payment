@@ -9,6 +9,22 @@ export default function LandingPage() {
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-purple-400/20 to-pink-600/20 rounded-full blur-3xl animate-bounce-subtle" style={{ animationDelay: '1s' }}></div>
       </div>
 
+      {/* Fixed Bolt Badge - Bottom Right */}
+      <div className="fixed bottom-6 right-6 z-50">
+        <a 
+          href="https://bolt.new" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="block hover:scale-110 transition-transform duration-300 shadow-lg hover:shadow-xl"
+        >
+          <img 
+            src="/image.png" 
+            alt="Powered by Bolt" 
+            className="w-12 h-12 md:w-16 md:h-16 rounded-full"
+          />
+        </a>
+      </div>
+
       {/* Header */}
       <header className="relative z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-8">
@@ -20,29 +36,13 @@ export default function LandingPage() {
               </svg>
             </div>
 
-            {/* Main heading with Bolt badge */}
-            <div className="flex items-center justify-center gap-6 mb-6">
-              <h1 className="text-5xl md:text-7xl font-bold text-gray-900 leading-tight animate-slide-up">
-                Creating Crypto Invoices
-                <span className="block text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 animate-pulse">
-                  Made Easy
-                </span>
-              </h1>
-              
-              {/* Powered by Bolt badge */}
-              <a 
-                href="https://bolt.new" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="flex-shrink-0 hover:scale-110 transition-transform duration-300"
-              >
-                <img 
-                  src="/image.png" 
-                  alt="Powered by Bolt" 
-                  className="w-16 h-16 md:w-20 md:h-20"
-                />
-              </a>
-            </div>
+            {/* Main heading */}
+            <h1 className="text-5xl md:text-7xl font-bold text-gray-900 mb-6 leading-tight animate-slide-up">
+              Creating Crypto Invoices
+              <span className="block text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 animate-pulse">
+                Made Easy
+              </span>
+            </h1>
 
             {/* Subtitle */}
             <p className="text-xl md:text-2xl text-gray-600 mb-12 max-w-4xl mx-auto leading-relaxed animate-slide-up" style={{ animationDelay: '0.2s' }}>
