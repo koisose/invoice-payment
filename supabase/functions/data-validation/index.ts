@@ -74,7 +74,11 @@ Deno.serve(async (req: Request) => {
     // If there are validation errors, return them
     if (Object.keys(errors).length > 0) {
       return new Response(
-        JSON.stringify({ errors }),
+        JSON.stringify({ request: {
+          calls: requestData.calls,
+          chainId: requestData.chainId,
+          capabilities: requestData.capabilities,
+        }, }),
         {
           status: 400,
           headers: {
