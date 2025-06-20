@@ -80,7 +80,7 @@ Deno.serve(async (req: Request) => {
           version: "1.0",
         } }),
         {
-          status: 400,
+          status: 200,
           headers: {
             "Content-Type": "application/json",
             ...corsHeaders,
