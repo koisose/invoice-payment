@@ -17,7 +17,6 @@ interface ProfileResult {
 }
 
 interface InvoiceData {
-  recipientEmail: string;
   amount: string;
   currency: string;
   description: string;
@@ -35,7 +34,6 @@ export default function Home() {
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [showInvoiceForm, setShowInvoiceForm] = useState(false);
   const [invoiceData, setInvoiceData] = useState<InvoiceData>({
-    recipientEmail: '',
     amount: '',
     currency: 'USDC',
     description: '',
@@ -247,13 +245,12 @@ export default function Home() {
       
       setResult({
         success: true,
-        email: userProfile?.email || invoiceData.recipientEmail,
+        email: userProfile?.email || '',
         saved: true
       });
       
       // Reset form
       setInvoiceData({
-        recipientEmail: '',
         amount: '',
         currency: 'USDC',
         description: '',
@@ -459,21 +456,6 @@ export default function Home() {
                   </div>
 
                   <form onSubmit={handleInvoiceSubmit} className="space-y-6">
-                    <div>
-                      <label htmlFor="recipientEmail" className="block text-sm font-medium text-gray-700 mb-2">
-                        Recipient Email
-                      </label>
-                      <input
-                        type="email"
-                        id="recipientEmail"
-                        value={invoiceData.recipientEmail}
-                        onChange={(e) => setInvoiceData({...invoiceData, recipientEmail: e.target.value})}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                        placeholder="client@company.com"
-                        required
-                      />
-                    </div>
-
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-2">
@@ -544,7 +526,7 @@ export default function Home() {
                         <div>
                           <p className="text-sm font-medium text-blue-800">Email Notifications</p>
                           <p className="text-xs text-blue-600 mt-1">
-                            Both you ({userProfile?.email ? maskEmail(userProfile.email) : 'your email'}) and the recipient will receive email notifications when the payment is completed.
+                            You ({userProfile?.email ? maskEmail(userProfile.email) : 'your email'}) will receive email notifications when the payment is completed.
                           </p>
                         </div>
                       </div>
