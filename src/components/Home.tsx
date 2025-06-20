@@ -244,7 +244,7 @@ export default function Home() {
             cursor: (!isConnected || isPending) ? "not-allowed" : "pointer"
           }}
         >
-          {isPending ? "Processing..." : "Checkout"}
+          {isPending ? "Processing..." : "Create Invoice"}
         </button>
       </div>
 
