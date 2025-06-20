@@ -1,7 +1,5 @@
-"use client";
-
 import { useEffect, useState } from "react";
-import { encodeFunctionData, erc20Abi, numberToHex, parseUnits } from "viem";
+import { encodeFunctionData, erc20Abi, parseUnits } from "viem";
 import { useConnect, useSendCalls } from "wagmi";
 
 interface DataRequest {
@@ -25,7 +23,6 @@ export default function Home() {
 
   const { sendCalls, data, error, isPending } = useSendCalls();
   const { connect, connectors } = useConnect()
-
 
   // Function to get callback URL - replace in production
   function getCallbackURL() {
