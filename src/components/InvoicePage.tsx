@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { parseUnits, formatEther, encodeFunctionData, erc20Abi } from "viem";
-import { useConnect, useSendCalls, useAccount, useBalance, useChainId, useDisconnect } from "wagmi";
+import { useConnect, useSendCalls, useAccount, useBalance, useChainId, useDisconnect, useReadContract } from "wagmi";
 import { getInvoice, updateInvoiceStatus, saveUserProfile, getUserProfile, Invoice, UserProfile } from "../lib/supabase";
 
 interface PaymentResult {
@@ -30,6 +30,17 @@ export default function InvoicePage() {
   const { data: balance } = useBalance({
     address: address,
     chainId: 0x14A34, // Base Sepolia (84532 in hex)
+  });
+
+  // USDC balance
+  const { data: usdcBalance } = useReadContract({
+    address: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    abi: erc20Abi,
+    functionName: "balanceOf",
+    args: address ? [address] : undefined,
+    query: {
+      enabled: !!address,
+    },
   });
 
   // Load invoice data
@@ -398,9 +409,15 @@ export default function InvoicePage() {
                       <span className="ml-2 text-green-800">{getChainName(chainId)}</span>
                     </div>
                     <div>
-                      <span className="text-green-600 font-medium">Balance:</span>
+                      <span className="text-green-600 font-medium">ETH Balance:</span>
                       <span className="ml-2 text-green-800">
                         {balance ? `${parseFloat(formatEther(balance.value)).toFixed(4)} ETH` : "Loading..."}
+                      </span>
+                    </div>
+                    <div className="col-span-2">
+                      <span className="text-green-600 font-medium">USDC Balance:</span>
+                      <span className="ml-2 text-green-800">
+                        {usdcBalance !== undefined ? `${(Number(usdcBalance) / 1e6).toFixed(2)} USDC` : "Loading..."}
                       </span>
                     </div>
                   </div>
