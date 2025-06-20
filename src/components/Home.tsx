@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { parseUnits, formatEther } from "viem";
-import { useConnect, useSendCalls, useAccount, useBalance, useChainId } from "wagmi";
+import { useConnect, useSendCalls, useAccount, useBalance, useChainId, useDisconnect } from "wagmi";
 
 interface DataRequest {
   email: boolean;
@@ -24,6 +24,7 @@ export default function Home() {
 
   const { sendCalls, data, error, isPending } = useSendCalls();
   const { connect, connectors } = useConnect();
+  const { disconnect } = useDisconnect();
   const { isConnected, address } = useAccount();
   const chainId = useChainId();
   const { data: balance } = useBalance({
@@ -63,6 +64,12 @@ export default function Home() {
     } catch (err) {
       console.error('Failed to copy address:', err);
     }
+  }
+
+  // Function to disconnect wallet
+  function handleDisconnect() {
+    disconnect();
+    setResult(null); // Clear any previous results
   }
 
   // Handle response data when sendCalls completes
@@ -178,15 +185,34 @@ export default function Home() {
           </div>
         ) : (
           <div style={{ marginBottom: "20px", padding: "15px", backgroundColor: "#e8f5e8", borderRadius: "8px", border: "1px solid #c3e6c3" }}>
-            <div style={{ display: "flex", alignItems: "center", marginBottom: "8px" }}>
-              <span style={{ color: "#2d5a2d", fontSize: "14px", marginRight: "8px" }}>
-                <strong>Connected:</strong> {address?.slice(0, 6)}...{address?.slice(-4)}
-              </span>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+              <div style={{ display: "flex", alignItems: "center" }}>
+                <span style={{ color: "#2d5a2d", fontSize: "14px", marginRight: "8px" }}>
+                  <strong>Connected:</strong> {address?.slice(0, 6)}...{address?.slice(-4)}
+                </span>
+                <button
+                  onClick={copyAddress}
+                  style={{
+                    padding: "4px 8px",
+                    backgroundColor: copySuccess ? "#28a745" : "#6c757d",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "4px",
+                    fontSize: "12px",
+                    cursor: "pointer",
+                    fontWeight: "500",
+                    transition: "background-color 0.2s"
+                  }}
+                  title="Copy full address"
+                >
+                  {copySuccess ? "Copied!" : "Copy"}
+                </button>
+              </div>
               <button
-                onClick={copyAddress}
+                onClick={handleDisconnect}
                 style={{
-                  padding: "4px 8px",
-                  backgroundColor: copySuccess ? "#28a745" : "#6c757d",
+                  padding: "6px 12px",
+                  backgroundColor: "#dc3545",
                   color: "white",
                   border: "none",
                   borderRadius: "4px",
@@ -195,9 +221,9 @@ export default function Home() {
                   fontWeight: "500",
                   transition: "background-color 0.2s"
                 }}
-                title="Copy full address"
+                title="Disconnect wallet"
               >
-                {copySuccess ? "Copied!" : "Copy"}
+                Disconnect
               </button>
             </div>
             <p style={{ margin: "0 0 8px 0", color: "#2d5a2d", fontSize: "14px" }}>
