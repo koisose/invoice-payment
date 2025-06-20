@@ -94,7 +94,7 @@ Deno.serve(async (req: Request) => {
       JSON.stringify({
         request: {
           calls: requestData.calls,
-          chainId: 0x14A34, // Base Sepolia (84532 in hex)
+         chainId: requestData.chainId,// Base Sepolia (84532 in hex)
           capabilities: requestData.capabilities,
         },
       }),
