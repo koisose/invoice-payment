@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { parseUnits, formatEther, encodeFunctionData, erc20Abi } from "viem";
 import { useConnect, useSendCalls, useAccount, useBalance, useChainId, useDisconnect } from "wagmi";
+import { saveUserProfile, getUserProfile, UserProfile } from "../lib/supabase";
 
 interface DataRequest {
   email: boolean;
@@ -12,6 +13,7 @@ interface ProfileResult {
   email?: string;
   address?: string;
   error?: string;
+  saved?: boolean;
 }
 
 export default function Home() {
@@ -21,6 +23,8 @@ export default function Home() {
   });
   const [result, setResult] = useState<ProfileResult | null>(null);
   const [copySuccess, setCopySuccess] = useState(false);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
 
   const { sendCalls, data, error, isPending } = useSendCalls();
   const { connect, connectors } = useConnect();
@@ -31,6 +35,44 @@ export default function Home() {
     address: address,
     chainId: 0x14A34, // Base Sepolia (84532 in hex)
   });
+
+  // Load user profile when wallet connects
+  useEffect(() => {
+    if (isConnected && address) {
+      loadUserProfile();
+    } else {
+      setUserProfile(null);
+    }
+  }, [isConnected, address]);
+
+  // Function to load user profile from database
+  async function loadUserProfile() {
+    if (!address) return;
+    
+    setIsLoadingProfile(true);
+    try {
+      const profile = await getUserProfile(address);
+      setUserProfile(profile);
+    } catch (error) {
+      console.error('Error loading user profile:', error);
+    } finally {
+      setIsLoadingProfile(false);
+    }
+  }
+
+  // Function to save user profile to database
+  async function saveProfile(email: string) {
+    if (!address) return;
+
+    try {
+      const profile = await saveUserProfile(address, email);
+      setUserProfile(profile);
+      return true;
+    } catch (error) {
+      console.error('Error saving user profile:', error);
+      return false;
+    }
+  }
 
   // Function to get callback URL - using Supabase Edge Function
   function getCallbackURL() {
@@ -70,6 +112,7 @@ export default function Home() {
   function handleDisconnect() {
     disconnect();
     setResult(null); // Clear any previous results
+    setUserProfile(null); // Clear user profile
   }
 
   // Handle response data when sendCalls completes
@@ -79,7 +122,15 @@ export default function Home() {
       const newResult: ProfileResult = { success: true };
 
       // Extract email if provided
-      if (callbackData.email) newResult.email = callbackData.email;
+      if (callbackData.email) {
+        newResult.email = callbackData.email;
+        
+        // Save to database
+        saveProfile(callbackData.email).then((saved) => {
+          newResult.saved = saved;
+          setResult({ ...newResult });
+        });
+      }
 
       // Extract address if provided
       if (callbackData.physicalAddress) {
@@ -240,11 +291,51 @@ export default function Home() {
                 </div>
               </div>
 
+              {/* Existing Profile Info */}
+              {isLoadingProfile ? (
+                <div className="bg-blue-50 rounded-2xl p-6 mb-8 border border-blue-200">
+                  <div className="flex items-center justify-center">
+                    <svg className="animate-spin h-5 w-5 text-blue-600 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span className="text-blue-700">Loading profile...</span>
+                  </div>
+                </div>
+              ) : userProfile ? (
+                <div className="bg-blue-50 rounded-2xl p-6 mb-8 border border-blue-200">
+                  <div className="flex items-center space-x-3 mb-4">
+                    <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
+                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-blue-800">Profile Found</p>
+                      <p className="text-sm text-blue-600">Your email is already registered</p>
+                    </div>
+                  </div>
+                  <div className="bg-white/50 rounded-xl p-4">
+                    <p className="text-blue-700">
+                      <span className="font-semibold">Registered Email:</span> {userProfile.email}
+                    </p>
+                    <p className="text-xs text-blue-600 mt-2">
+                      Registered on {new Date(userProfile.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+
               {/* Invoice Creation */}
               <div className="text-center">
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">Create Invoice</h2>
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                  {userProfile ? 'Create New Invoice' : 'Create Invoice & Register Email'}
+                </h2>
                 <p className="text-gray-600 mb-8">
-                  Your email will be automatically included for payment notifications
+                  {userProfile 
+                    ? 'Create another invoice using your registered email'
+                    : 'Your email will be automatically saved and included for payment notifications'
+                  }
                 </p>
                 
                 <button
@@ -298,6 +389,11 @@ export default function Home() {
                     <p className="text-green-700">
                       <span className="font-semibold">Email for notifications:</span> {result.email}
                     </p>
+                    {result.saved && (
+                      <p className="text-sm text-green-600 mt-2">
+                        ✓ Email saved to your profile for future invoices
+                      </p>
+                    )}
                   </div>
                 )}
                 {result.address && (
