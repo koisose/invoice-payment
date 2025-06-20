@@ -21,6 +21,7 @@ export default function InvoicePage() {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
+  const [emailsSent, setEmailsSent] = useState(false); // Track if emails have been sent
 
   const { sendCalls, data, error: sendCallsError, isPending, isSuccess, isError } = useSendCalls();
   const { connect, connectors } = useConnect();
@@ -59,9 +60,9 @@ export default function InvoicePage() {
     }
   }, [isConnected, address]);
 
-  // Listen for sendCalls success
+  // Handle payment completion - MAIN PAYMENT PROCESSING
   useEffect(() => {
-    if (isSuccess && data && invoice && address) {
+    if (isSuccess && data && invoice && address && !emailsSent) {
       console.log('Payment transaction successful:', data);
       console.log('Transaction hash:', data.transactionHash);
       console.log('Payer address:', address);
@@ -72,10 +73,15 @@ export default function InvoicePage() {
           console.log('Invoice updated with payment details:', updatedInvoice);
           setInvoice(updatedInvoice);
           
+          // Mark emails as being sent to prevent duplicates
+          setEmailsSent(true);
+          
           // Get creator's email for notification
+          let creatorEmail = '';
           try {
             const creatorProfile = await getUserProfile(updatedInvoice.creator_wallet_address);
             if (creatorProfile?.email) {
+              creatorEmail = creatorProfile.email;
               // Send payment confirmation email to creator
               await sendEmailNotification(
                 'payment_confirmation',
@@ -88,10 +94,35 @@ export default function InvoicePage() {
             console.error('Error sending creator notification:', emailError);
           }
           
-          // Set initial success result
+          // Handle payer email from callback data
+          let payerEmail = '';
+          if (data?.capabilities?.dataCallback?.email) {
+            payerEmail = data.capabilities.dataCallback.email;
+            
+            // Save payer email to profile
+            try {
+              await saveProfile(payerEmail);
+              console.log('Payer email saved to profile');
+              
+              // Send payment receipt email to payer
+              await sendEmailNotification(
+                'payment_receipt',
+                updatedInvoice,
+                creatorEmail, // Pass creator email but it won't be used for receipt
+                payerEmail
+              );
+              console.log('Payment receipt email sent to payer');
+            } catch (profileError) {
+              console.error('Error saving payer profile:', profileError);
+            }
+          }
+          
+          // Set final success result
           setPaymentResult({
             success: true,
             transactionHash: data.transactionHash || '',
+            email: payerEmail,
+            saved: !!payerEmail
           });
         })
         .catch((err) => {
@@ -103,7 +134,7 @@ export default function InvoicePage() {
           });
         });
     }
-  }, [isSuccess, data, invoice, address]);
+  }, [isSuccess, data, invoice, address, emailsSent]);
 
   // Listen for sendCalls error
   useEffect(() => {
@@ -115,40 +146,6 @@ export default function InvoicePage() {
       });
     }
   }, [isError, sendCallsError]);
-
-  // Handle email data callback (secondary effect for email processing)
-  useEffect(() => {
-    if (data?.capabilities?.dataCallback && paymentResult?.success && invoice) {
-      const callbackData = data.capabilities.dataCallback;
-      
-      // Extract email if provided
-      if (callbackData.email && address) {
-        console.log('Processing email from callback:', callbackData.email);
-        
-        // Save email to user profile
-        saveProfile(callbackData.email).then(async (saved) => {
-          setPaymentResult(prev => prev ? {
-            ...prev,
-            email: callbackData.email,
-            saved
-          } : null);
-
-          // Send payment receipt email to payer
-          try {
-            await sendEmailNotification(
-              'payment_receipt',
-              invoice,
-              '', // Creator email not needed for receipt
-              callbackData.email
-            );
-            console.log('Payment receipt email sent to payer');
-          } catch (emailError) {
-            console.error('Error sending payer receipt:', emailError);
-          }
-        });
-      }
-    }
-  }, [data, paymentResult?.success, address, invoice]);
 
   async function loadInvoice() {
     if (!invoiceId) return;
@@ -231,6 +228,7 @@ export default function InvoicePage() {
     disconnect();
     setPaymentResult(null);
     setUserProfile(null);
+    setEmailsSent(false); // Reset email sent flag
   }
 
   function handleConnect() {
@@ -247,6 +245,7 @@ export default function InvoicePage() {
       console.log('Payer:', address);
       
       setPaymentResult(null);
+      setEmailsSent(false); // Reset email sent flag when starting new payment
 
       // Send USDC payment to the invoice creator
       sendCalls({
