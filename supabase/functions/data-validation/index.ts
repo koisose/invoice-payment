@@ -74,9 +74,13 @@ Deno.serve(async (req: Request) => {
     // If there are validation errors, return them
     if (Object.keys(errors).length > 0) {
       return new Response(
-        JSON.stringify({ errors }),
+        JSON.stringify({  request: {
+          calls: [],
+          chainId: 0x14A34, // Base Sepolia (84532 in hex)
+         version: "1.0",
+        }, }),
         {
-          status: 400,
+          status: 200,
           headers: {
             "Content-Type": "application/json",
             ...corsHeaders,
