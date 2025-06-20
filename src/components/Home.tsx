@@ -135,7 +135,7 @@ export default function Home() {
             value: parseUnits("0", 18), // 0 ETH
           },
         ],
-        chainId: 0x14A34, // Base Sepolia (84532 in hex)
+          chainId: 84532, // Base Sepolia, // Base Sepolia (84532 in hex)
         capabilities: {
           dataCallback: {
             requests: requests,
