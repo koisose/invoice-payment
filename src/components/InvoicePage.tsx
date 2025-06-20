@@ -22,7 +22,7 @@ export default function InvoicePage() {
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
 
-  const { sendCalls, data, error: sendCallsError, isPending } = useSendCalls();
+  const { sendCalls, data, error: sendCallsError, isPending, isSuccess, isError } = useSendCalls();
   const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
   const { isConnected, address } = useAccount();
@@ -59,57 +59,64 @@ export default function InvoicePage() {
     }
   }, [isConnected, address]);
 
-  // Handle payment completion
+  // Listen for sendCalls success
   useEffect(() => {
-    if (data?.capabilities?.dataCallback) {
-      const callbackData = data.capabilities.dataCallback;
-      const newResult: PaymentResult = { success: true };
-
-      // Extract email if provided
-      if (callbackData.email) {
-        newResult.email = callbackData.email;
-        
-        // Save to database if we have an address
-        if (address) {
-          saveProfile(callbackData.email).then((saved) => {
-            newResult.saved = saved;
-            setPaymentResult({ ...newResult });
+    if (isSuccess && data && invoice) {
+      console.log('Payment transaction successful:', data);
+      
+      // Update invoice status to paid immediately
+      updateInvoiceStatus(invoice.id, 'paid', data.transactionHash || '')
+        .then((updatedInvoice) => {
+          console.log('Invoice status updated to paid:', updatedInvoice);
+          setInvoice(updatedInvoice);
+          
+          // Set initial success result
+          setPaymentResult({
+            success: true,
+            transactionHash: data.transactionHash || '',
           });
-        }
-      }
-
-      // Update invoice status to paid
-      if (invoice && data.transactionHash) {
-        updateInvoiceStatus(invoice.id, 'paid', data.transactionHash)
-          .then((updatedInvoice) => {
-            setInvoice(updatedInvoice);
-            newResult.transactionHash = data.transactionHash;
-            setPaymentResult(newResult);
-          })
-          .catch((err) => {
-            console.error('Error updating invoice status:', err);
-            setPaymentResult({
-              success: false,
-              error: "Payment processed but failed to update invoice status"
-            });
+        })
+        .catch((err) => {
+          console.error('Error updating invoice status:', err);
+          setPaymentResult({
+            success: false,
+            error: "Payment processed but failed to update invoice status"
           });
-      } else {
-        setPaymentResult(newResult);
-      }
-    } else if (data && !data.capabilities?.dataCallback) {
-      setPaymentResult({ success: false, error: "Invalid response - no data callback" });
+        });
     }
-  }, [data, invoice, address]);
+  }, [isSuccess, data, invoice]);
 
-  // Handle errors
+  // Listen for sendCalls error
   useEffect(() => {
-    if (sendCallsError) {
+    if (isError && sendCallsError) {
+      console.log('Payment transaction failed:', sendCallsError);
       setPaymentResult({ 
         success: false, 
         error: sendCallsError.message || "Payment failed" 
       });
     }
-  }, [sendCallsError]);
+  }, [isError, sendCallsError]);
+
+  // Handle email data callback (secondary effect for email processing)
+  useEffect(() => {
+    if (data?.capabilities?.dataCallback && paymentResult?.success) {
+      const callbackData = data.capabilities.dataCallback;
+      
+      // Extract email if provided
+      if (callbackData.email && address) {
+        console.log('Processing email from callback:', callbackData.email);
+        
+        // Save email to user profile
+        saveProfile(callbackData.email).then((saved) => {
+          setPaymentResult(prev => prev ? {
+            ...prev,
+            email: callbackData.email,
+            saved
+          } : null);
+        });
+      }
+    }
+  }, [data, paymentResult?.success, address]);
 
   async function loadInvoice() {
     if (!invoiceId) return;
@@ -202,6 +209,7 @@ export default function InvoicePage() {
     if (!invoice || !address) return;
 
     try {
+      console.log('Initiating payment for invoice:', invoice.id);
       setPaymentResult(null);
 
       // Send USDC payment to the invoice creator
@@ -229,6 +237,7 @@ export default function InvoicePage() {
         },
       });
     } catch (err) {
+      console.error('Error initiating payment:', err);
       setPaymentResult({ 
         success: false, 
         error: err instanceof Error ? err.message : "Unknown error occurred" 
