@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { parseUnits, formatEther, encodeFunctionData, erc20Abi } from "viem";
-import { useConnect, useSendCalls, useAccount, useBalance, useChainId, useDisconnect, useReadContract } from "wagmi";
+import { useSendCalls, useBalance, useChainId, useReadContract } from "wagmi";
+import { useAccount, useModal, useWallet } from "@getpara/react-sdk";
 import { saveUserProfile, getUserProfile, UserProfile, createInvoice, Invoice } from "../lib/supabase";
 
 interface DataRequest {
@@ -21,6 +22,7 @@ interface ProfileResult {
 interface InvoiceData {
   amount: string;
   description: string;
+  email: string;
 }
 
 export default function Home() {
@@ -35,26 +37,38 @@ export default function Home() {
   const [showInvoiceForm, setShowInvoiceForm] = useState(false);
   const [invoiceData, setInvoiceData] = useState<InvoiceData>({
     amount: '',
-    description: ''
+    description: '',
+    email: ''
   });
   const [isCreatingInvoice, setIsCreatingInvoice] = useState(false);
 
   const { sendCalls, data, error, isPending } = useSendCalls();
-  const { connect, connectors } = useConnect();
-  const { disconnect } = useDisconnect();
-  const { isConnected, address } = useAccount();
+  
+  // Use Para's React SDK hooks
+  const { data: account } = useAccount();
+  const { data: wallet } = useWallet();
+  const { openModal, closeModal } = useModal();
+  
+  // Extract connection status and address from Para wallet
+  const isConnected = !!wallet?.address;
+  const address = wallet?.address;
+  
   const chainId = useChainId();
-  const { data: balance } = useBalance({
-    address: address,
-    chainId: 0x14A34, // Base Sepolia (84532 in hex)
+  
+  // ETH balance using wagmi hook
+  const { data: ethBalance, isLoading: isEthLoading } = useBalance({
+    address: address as `0x${string}` | undefined,
+    chainId: 84532, // Base Sepolia chain ID
+    query: {
+      enabled: !!address,
+    },
   });
 
-  // USDC balance
-  const { data: usdcBalance } = useReadContract({
-    address: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-    abi: erc20Abi,
-    functionName: "balanceOf",
-    args: address ? [address] : undefined,
+  // USDC balance using wagmi hook
+  const { data: usdcBalance, isLoading: isUsdcLoading } = useBalance({
+    address: address as `0x${string}` | undefined,
+    token: "0x036CbD53842c5426634e7929541eC2318f3dCF7e", // USDC contract on Base Sepolia
+    chainId: 84532, // Base Sepolia chain ID
     query: {
       enabled: !!address,
     },
@@ -96,6 +110,10 @@ export default function Home() {
     try {
       const profile = await getUserProfile(address);
       setUserProfile(profile);
+      // Pre-fill email if user has a profile
+      if (profile?.email) {
+        setInvoiceData(prev => ({ ...prev, email: profile.email }));
+      }
     } catch (error) {
       console.error('Error loading user profile:', error);
     } finally {
@@ -117,21 +135,16 @@ export default function Home() {
     }
   }
 
-  // Function to get callback URL - using Supabase Edge Function
-  function getCallbackURL() {
-    return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/data-validation`;
-  }
-
   // Function to get chain name
   function getChainName(chainId: number) {
     switch (chainId) {
-      case 0x14A34: // 84532 in hex
+      case 84532: // Base Sepolia
         return "Base Sepolia";
-      case 0x2105: // 8453 in hex
+      case 8453: // Base
         return "Base";
-      case 0x1: // 1 in hex
+      case 1: // Ethereum
         return "Ethereum";
-      case 0xAA36A7: // 11155111 in hex
+      case 11155111: // Sepolia
         return "Sepolia";
       default:
         return `Chain ${chainId}`;
@@ -163,106 +176,34 @@ export default function Home() {
     }
   }
 
-  // Function to disconnect wallet
-  function handleDisconnect() {
-    disconnect();
-    setResult(null); // Clear any previous results
-    setUserProfile(null); // Clear user profile
-    setShowInvoiceForm(false); // Hide invoice form
-  }
-
-  // Handle response data when sendCalls completes
-  useEffect(() => {
-    if (data?.capabilities?.dataCallback) {
-      const callbackData = data.capabilities.dataCallback;
-      const newResult: ProfileResult = { success: true };
-
-      // Extract email if provided
-      if (callbackData.email) {
-        newResult.email = callbackData.email;
-        
-        // Save to database
-        saveProfile(callbackData.email).then((saved) => {
-          newResult.saved = saved;
-          setResult({ ...newResult });
-        });
-      }
-
-      // Extract address if provided
-      if (callbackData.physicalAddress) {
-        const addr = callbackData.physicalAddress.physicalAddress;
-        newResult.address = [
-          addr.address1,
-          addr.address2,
-          addr.city,
-          addr.state,
-          addr.postalCode,
-          addr.countryCode
-        ].filter(Boolean).join(", ");
-      }
-
-      setResult(newResult);
-    } else if (data && !data.capabilities?.dataCallback) {
-      setResult({ success: false, error: "Invalid response - no data callback" });
-    }
-  }, [data]);
-
-  // Handle errors
-  useEffect(() => {
-    if (error) {
-      setResult({ 
-        success: false, 
-        error: error.message || "Transaction failed" 
-      });
-    }
-  }, [error]);
-
-  // Handle form submission for new users (email registration)
-  async function handleEmailRegistration() {
+  // Function to disconnect wallet using Para's logout
+  async function handleDisconnect() {
     try {
-      setResult(null);
-
-      // Send calls using wagmi hook - Send 0 ETH to zero address
-      sendCalls({
-        connector: connectors[0],
-        account: null,
-        calls: [
-          {
-            to: "0x036CbD53842c5426634e7929541eC2318f3dCF7e", // USDC contract address on Base Sepolia
-            data: encodeFunctionData({
-              abi: erc20Abi,
-              functionName: "transfer",
-              args: [
-                "0x08621A0e2D7692154083fa742735EbcfCA301bf0",
-                parseUnits("0", 6),
-              ],
-            }),
-          },
-        ],
-          // chainId: 84532, // Base Sepolia, // Base Sepolia (84532 in hex)
-        capabilities: {
-          dataCallback: {
-            requests: [{ type: "email", optional: false }],
-            callbackURL: getCallbackURL(),
-          },
-        },
-      });
-    } catch (err) {
-      setResult({ 
-        success: false, 
-        error: err instanceof Error ? err.message : "Unknown error occurred" 
-      });
+      // Use Para's logout functionality
+      if (account?.logout) {
+        await account.logout();
+      }
+      setResult(null); // Clear any previous results
+      setUserProfile(null); // Clear user profile
+      setShowInvoiceForm(false); // Hide invoice form
+    } catch (error) {
+      console.error('Error disconnecting:', error);
     }
   }
 
   // Handle invoice form submission
   async function handleInvoiceSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!address || !userProfile) return;
+    if (!address) return;
 
     setIsCreatingInvoice(true);
 
     try {
+      // Save user profile if email is provided and user doesn't have a profile yet
+      if (invoiceData.email.trim() && !userProfile) {
+        await saveProfile(invoiceData.email.trim());
+      }
+
       // Create invoice in database
       const invoice = await createInvoice(
         address,
@@ -275,7 +216,7 @@ export default function Home() {
       
       setResult({
         success: true,
-        email: userProfile.email,
+        email: invoiceData.email,
         saved: true,
         invoice,
         shareLink
@@ -284,7 +225,8 @@ export default function Home() {
       // Reset form
       setInvoiceData({
         amount: '',
-        description: ''
+        description: '',
+        email: userProfile?.email || ''
       });
       setShowInvoiceForm(false);
     } catch (err) {
@@ -297,9 +239,13 @@ export default function Home() {
     }
   }
 
-  // Handle wallet connection
+  // Handle wallet connection using Para's modal
   function handleConnect() {
-    connect({ connector: connectors[0] });
+    try {
+      openModal();
+    } catch (error) {
+      console.error('Error opening Para modal:', error);
+    }
   }
 
   return (
@@ -327,7 +273,7 @@ export default function Home() {
                 </svg>
               </div>
               <h2 className="text-2xl font-bold text-gray-900 mb-4">Connect Your Wallet</h2>
-              <p className="text-gray-600 mb-8">Connect your Coinbase Smart Wallet to get started with invoice creation</p>
+              <p className="text-gray-600 mb-8">Connect with Para to get started with invoice creation using social login or email</p>
               <button
                 onClick={handleConnect}
                 className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-2xl hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-4 focus:ring-blue-300 focus:ring-opacity-50 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
@@ -335,7 +281,7 @@ export default function Home() {
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
-                Connect with Coinbase Smart Wallet
+                Connect with Para
               </button>
             </div>
           ) : (
@@ -351,7 +297,7 @@ export default function Home() {
                     </div>
                     <div>
                       <p className="font-semibold text-green-800">Wallet Connected</p>
-                      <p className="text-sm text-green-600">{address?.slice(0, 6)}...{address?.slice(-4)}</p>
+                      <p className="text-sm text-green-600">Connected: {address?.slice(0, 6)}...{address?.slice(-4)}</p>
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
@@ -383,13 +329,13 @@ export default function Home() {
                   <div>
                     <span className="text-green-600 font-medium">ETH Balance:</span>
                     <span className="ml-2 text-green-800">
-                      {balance ? `${parseFloat(formatEther(balance.value)).toFixed(4)} ETH` : "Loading..."}
+                      {isEthLoading ? "Loading..." : ethBalance ? `${parseFloat(ethBalance.formatted).toFixed(4)} ${ethBalance.symbol}` : "0.0000 ETH"}
                     </span>
                   </div>
                   <div className="col-span-2">
                     <span className="text-green-600 font-medium">USDC Balance:</span>
                     <span className="ml-2 text-green-800">
-                      {usdcBalance !== undefined ? `${(Number(usdcBalance) / 1e6).toFixed(2)} USDC` : "Loading..."}
+                      {isUsdcLoading ? "Loading..." : usdcBalance ? `${parseFloat(usdcBalance.formatted).toFixed(2)} ${usdcBalance.symbol}` : "0.00 USDC"}
                     </span>
                   </div>
                 </div>
@@ -433,47 +379,19 @@ export default function Home() {
               {/* Invoice Creation Section */}
               {!showInvoiceForm ? (
                 <div className="text-center">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                    {userProfile ? 'Create New Invoice' : 'Create Invoice & Register Email'}
-                  </h2>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-4">Create New Invoice</h2>
                   <p className="text-gray-600 mb-8">
-                    {userProfile 
-                      ? 'Create a professional invoice using your registered email'
-                      : 'Your email will be automatically saved and included for payment notifications'
-                    }
+                    Create a professional invoice and receive email notifications when payments are completed
                   </p>
                   
                   <button
-                    onClick={() => {
-                      if (userProfile) {
-                        setShowInvoiceForm(true);
-                      } else {
-                        handleEmailRegistration();
-                      }
-                    }}
-                    disabled={isPending}
-                    className={`inline-flex items-center px-8 py-4 font-semibold text-lg rounded-2xl transition-all duration-300 shadow-lg transform ${
-                      isPending
-                        ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                        : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl hover:-translate-y-1 focus:outline-none focus:ring-4 focus:ring-blue-300 focus:ring-opacity-50'
-                    }`}
+                    onClick={() => setShowInvoiceForm(true)}
+                    className="inline-flex items-center px-8 py-4 font-semibold text-lg rounded-2xl transition-all duration-300 shadow-lg transform bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl hover:-translate-y-1 focus:outline-none focus:ring-4 focus:ring-blue-300 focus:ring-opacity-50"
                   >
-                    {isPending ? (
-                      <>
-                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-gray-200" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        {userProfile ? 'Processing...' : 'Registering Email...'}
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        {userProfile ? 'Create Invoice' : 'Register Email & Create Invoice'}
-                      </>
-                    )}
+                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Create Invoice
                   </button>
                 </div>
               ) : (
@@ -524,6 +442,25 @@ export default function Home() {
                       />
                     </div>
 
+                    <div>
+                      <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                        Your Email Address
+                      </label>
+                      <input
+                        type="email"
+                        id="email"
+                        value={invoiceData.email}
+                        onChange={(e) => setInvoiceData({...invoiceData, email: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                        placeholder="your@email.com"
+                        required
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        You'll receive email notifications when payments are completed
+                        {!userProfile && " (This will also save your email to your profile)"}
+                      </p>
+                    </div>
+
                     <div className="bg-blue-50 rounded-xl p-4">
                       <div className="flex items-start space-x-3">
                         <svg className="w-5 h-5 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -532,7 +469,7 @@ export default function Home() {
                         <div>
                           <p className="text-sm font-medium text-blue-800">Email Notifications</p>
                           <p className="text-xs text-blue-600 mt-1">
-                            You ({userProfile?.email ? maskEmail(userProfile.email) : 'your email'}) will receive email notifications when the payment is completed.
+                            You will receive email notifications when the payment is completed, and your client will receive a payment receipt.
                           </p>
                         </div>
                       </div>
@@ -580,9 +517,7 @@ export default function Home() {
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
                 </div>
-                <h3 className="text-2xl font-bold text-green-800 mb-4">
-                  {result.invoice ? 'Invoice Created Successfully!' : userProfile ? 'Invoice Created Successfully!' : 'Profile Created & Invoice Generated!'}
-                </h3>
+                <h3 className="text-2xl font-bold text-green-800 mb-4">Invoice Created Successfully!</h3>
                 
                 {/* Invoice Details */}
                 {result.invoice && (

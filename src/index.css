@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import Para CSS for proper modal styling */
+
+
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 :root {
@@ -52,4 +55,28 @@ body {
 /* Background pattern for dots */
 .bg-pattern-dots {
   background-image: url('data:image/svg+xml,<svg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd"><g fill="%23ffffff" fill-opacity="0.1"><circle cx="30" cy="30" r="2"/></g></g></svg>');
+}
+
+/* Para Modal CSS Overrides - Only if needed for additional customization */
+/* Ensure Para modal has proper z-index */
+[data-para-modal] {
+  z-index: 9999 !important;
+}
+
+/* Ensure modal doesn't interfere with page layout */
+body.para-modal-open {
+  overflow: hidden !important;
+}
+
+/* Fix any potential layout issues */
+[data-para-modal] * {
+  box-sizing: border-box !important;
+}
+
+/* Additional responsive fixes for Para modal */
+@media (max-width: 640px) {
+  [data-para-modal] [data-para-content] {
+    width: 95% !important;
+    margin: 20px !important;
+  }
 }

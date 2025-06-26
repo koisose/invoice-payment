@@ -9,8 +9,6 @@ export default function LandingPage() {
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-purple-400/20 to-pink-600/20 rounded-full blur-3xl animate-bounce-subtle" style={{ animationDelay: '1s' }}></div>
       </div>
 
-
-
       {/* Header */}
       <header className="relative z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-8">
@@ -32,7 +30,7 @@ export default function LandingPage() {
 
             {/* Subtitle */}
             <p className="text-xl md:text-2xl text-gray-600 mb-12 max-w-4xl mx-auto leading-relaxed animate-slide-up" style={{ animationDelay: '0.2s' }}>
-              Streamline your crypto payments with <span className="font-semibold text-blue-600">Coinbase Smart Wallet</span> profiles. 
+              Streamline your crypto payments with <span className="font-semibold text-blue-600">Para's social login</span>. 
               Generate professional invoices and get instant email notifications when payments are completed.
             </p>
 
@@ -42,7 +40,7 @@ export default function LandingPage() {
                 <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                 </svg>
-                <span className="text-sm font-medium">Secure by Design</span>
+                <span className="text-sm font-medium">Social Login</span>
               </div>
               <div className="flex items-center space-x-2 text-gray-500">
                 <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
@@ -81,13 +79,13 @@ export default function LandingPage() {
           <div className="group bg-white/80 backdrop-blur-sm rounded-3xl p-8 shadow-lg border border-white/20 hover:shadow-2xl hover:bg-white transition-all duration-300 hover:-translate-y-2" style={{ animationDelay: '0.1s' }}>
             <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-cyan-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
               <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
             </div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-4">Secure & Simple</h3>
+            <h3 className="text-2xl font-bold text-gray-900 mb-4">Social Login</h3>
             <p className="text-gray-600 leading-relaxed text-lg">
-              Built on Coinbase Smart Wallet technology for maximum security. 
-              Create invoices in seconds with just your email address.
+              Connect with Google, Twitter, Discord, or email. No complex wallet setup required. 
+              Para makes crypto accessible to everyone.
             </p>
           </div>
 
@@ -116,9 +114,9 @@ export default function LandingPage() {
                 </div>
                 <div className="absolute -inset-4 bg-gradient-to-r from-blue-600/20 to-indigo-600/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">Connect Wallet</h3>
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">Connect with Para</h3>
               <p className="text-gray-600 text-lg leading-relaxed">
-                Connect your Coinbase Smart Wallet to get started. Your profile information is securely stored and encrypted.
+                Connect using Google, Twitter, Discord, or email. Para creates a secure wallet for you automatically.
               </p>
             </div>
             <div className="text-center group">
@@ -160,7 +158,7 @@ export default function LandingPage() {
             </h2>
             <p className="text-xl md:text-2xl text-blue-100 mb-10 max-w-3xl mx-auto leading-relaxed">
               Join thousands of professionals who trust our platform for secure, 
-              efficient crypto payment processing.
+              efficient crypto payment processing with social login.
             </p>
             <Link
               to="/app"
@@ -182,7 +180,7 @@ export default function LandingPage() {
                 <svg className="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                 </svg>
-                <span className="text-sm font-medium">Secure by design</span>
+                <span className="text-sm font-medium">Social login</span>
               </div>
               <div className="flex items-center space-x-2">
                 <svg className="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
@@ -208,10 +206,10 @@ export default function LandingPage() {
               <span className="text-lg font-semibold text-gray-700">Crypto Invoice Platform</span>
             </div>
             <p className="text-gray-500 text-sm">
-              &copy; 2025 Crypto Invoice Platform. Powered by Coinbase Smart Wallet.
+              &copy; 2025 Crypto Invoice Platform. Powered by Para.
             </p>
             <p className="text-gray-400 text-xs mt-2">
-              Secure • Fast • Reliable
+              Secure • Fast • Social
             </p>
           </div>
         </div>

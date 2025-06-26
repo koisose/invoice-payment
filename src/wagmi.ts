@@ -1,21 +1,45 @@
 import { http, createConfig } from "wagmi";
 import { baseSepolia } from "wagmi/chains";
-import { coinbaseWallet } from "wagmi/connectors";
+import { paraConnector } from "@getpara/wagmi-v2-integration";
+import Para, { Environment, OAuthMethod } from "@getpara/web-sdk";
 
-const cbWalletConnector = coinbaseWallet({
-  appName: "Profiles Demo",
-  preference: {
-    options: "smartWalletOnly",
+// Initialize Para client
+const para = new Para(Environment.BETA, import.meta.env.VITE_PARA_API_KEY || "");
+
+// Create Para connector with proper configuration to prevent multiple root creation
+const connector = paraConnector({
+  para,
+  chains: [baseSepolia],
+  appName: "Crypto Invoice Platform",
+  options: {
+    // Prevent multiple modal instances
+    preventMultipleInstances: true,
+  },
+  nameOverride: "Para",
+  idOverride: "para",
+  oAuthMethods: [
+    OAuthMethod.GOOGLE,
+    OAuthMethod.TWITTER,
+    OAuthMethod.DISCORD,
+  ],
+  disableEmailLogin: false,
+  disablePhoneLogin: false,
+  onRampTestMode: true,
+  customTheme: {
+    accentColor: "#3b82f6",
+    backgroundColor: "#FFFFFF",
   },
 });
 
 export function getConfig() {
   return createConfig({
     chains: [baseSepolia],
-    connectors: [cbWalletConnector],
+    connectors: [connector],
     transports: {
       [baseSepolia.id]: http(),
     },
+    // Add SSR configuration to prevent hydration issues
+    ssr: false,
   });
 }
 

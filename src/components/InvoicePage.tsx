@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { parseUnits, formatEther, encodeFunctionData, erc20Abi } from "viem";
-import { useConnect, useSendCalls, useAccount, useBalance, useChainId, useDisconnect, useReadContract } from "wagmi";
+import { useSendCalls, useBalance, useChainId, useReadContract } from "wagmi";
+import { useAccount, useModal, useWallet } from "@getpara/react-sdk";
 import { getInvoice, updateInvoiceWithPayment, saveUserProfile, getUserProfile, sendEmailNotification, Invoice, UserProfile } from "../lib/supabase";
 
 interface PaymentResult {
@@ -22,23 +23,36 @@ export default function InvoicePage() {
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
   const [emailsSent, setEmailsSent] = useState(false); // Track if emails have been sent
+  const [showEmailForm, setShowEmailForm] = useState(false);
+  const [emailInput, setEmailInput] = useState('');
 
   const { sendCalls, data, error: sendCallsError, isPending, isSuccess, isError } = useSendCalls();
-  const { connect, connectors } = useConnect();
-  const { disconnect } = useDisconnect();
-  const { isConnected, address } = useAccount();
+  
+  // Use Para's React SDK hooks
+  const { data: account } = useAccount();
+  const { data: wallet } = useWallet();
+  const { openModal } = useModal();
+  
+  // Extract connection status and address from Para wallet
+  const isConnected = !!wallet?.address;
+  const address = wallet?.address;
+  
   const chainId = useChainId();
-  const { data: balance } = useBalance({
-    address: address,
-    chainId: 0x14A34, // Base Sepolia (84532 in hex)
+  
+  // ETH balance using wagmi hook
+  const { data: ethBalance, isLoading: isEthLoading } = useBalance({
+    address: address as `0x${string}` | undefined,
+    chainId: 84532, // Base Sepolia chain ID
+    query: {
+      enabled: !!address,
+    },
   });
 
-  // USDC balance
-  const { data: usdcBalance } = useReadContract({
-    address: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-    abi: erc20Abi,
-    functionName: "balanceOf",
-    args: address ? [address] : undefined,
+  // USDC balance using wagmi hook
+  const { data: usdcBalance, isLoading: isUsdcLoading } = useBalance({
+    address: address as `0x${string}` | undefined,
+    token: "0x036CbD53842c5426634e7929541eC2318f3dCF7e", // USDC contract on Base Sepolia
+    chainId: 84532, // Base Sepolia chain ID
     query: {
       enabled: !!address,
     },
@@ -96,26 +110,22 @@ export default function InvoicePage() {
             console.error('Error sending creator notification:', emailError);
           }
           
-          // Handle payer email from callback data
+          // Handle payer email - check if user has profile or get from form
           let payerEmail = '';
-          if (data?.capabilities?.dataCallback?.email) {
-            payerEmail = data.capabilities.dataCallback.email;
+          if (userProfile?.email) {
+            payerEmail = userProfile.email;
             
-            // Save payer email to profile
+            // Send payment receipt email to payer
             try {
-              await saveProfile(payerEmail);
-              console.log('Payer email saved to profile');
-              
-              // Send payment receipt email to payer
               await sendEmailNotification(
                 'payment_receipt',
                 updatedInvoice,
-                creatorEmail, // Pass creator email but it won't be used for receipt
+                creatorEmail,
                 payerEmail
               );
               console.log('Payment receipt email sent to payer');
-            } catch (profileError) {
-              console.error('Error saving payer profile:', profileError);
+            } catch (emailError) {
+              console.error('Error sending payer receipt:', emailError);
             }
           }
           
@@ -137,7 +147,7 @@ export default function InvoicePage() {
           });
         });
     }
-  }, [isSuccess, data, invoice, address, emailsSent]);
+  }, [isSuccess, data, invoice, address, emailsSent, userProfile]);
 
   // Listen for sendCalls error
   useEffect(() => {
@@ -196,19 +206,15 @@ export default function InvoicePage() {
     }
   }
 
-  function getCallbackURL() {
-    return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/data-validation`;
-  }
-
   function getChainName(chainId: number) {
     switch (chainId) {
-      case 0x14A34: // 84532 in hex
+      case 84532: // Base Sepolia
         return "Base Sepolia";
-      case 0x2105: // 8453 in hex
+      case 8453: // Base
         return "Base";
-      case 0x1: // 1 in hex
+      case 1: // Ethereum
         return "Ethereum";
-      case 0xAA36A7: // 11155111 in hex
+      case 11155111: // Sepolia
         return "Sepolia";
       default:
         return `Chain ${chainId}`;
@@ -227,15 +233,45 @@ export default function InvoicePage() {
     }
   }
 
-  function handleDisconnect() {
-    disconnect();
-    setPaymentResult(null);
-    setUserProfile(null);
-    setEmailsSent(false); // Reset email sent flag
+  async function handleDisconnect() {
+    try {
+      // Use Para's logout functionality
+      if (account?.logout) {
+        await account.logout();
+      }
+      setPaymentResult(null);
+      setUserProfile(null);
+      setEmailsSent(false); // Reset email sent flag
+      setShowEmailForm(false);
+    } catch (error) {
+      console.error('Error disconnecting:', error);
+    }
   }
 
   function handleConnect() {
-    connect({ connector: connectors[0] });
+    try {
+      openModal();
+    } catch (error) {
+      console.error('Error opening Para modal:', error);
+    }
+  }
+
+  // Handle email form submission
+  async function handleEmailSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!emailInput.trim() || !address) return;
+
+    try {
+      const saved = await saveProfile(emailInput.trim());
+      if (saved) {
+        setShowEmailForm(false);
+        setEmailInput('');
+        // Proceed with payment after saving email
+        handlePayment();
+      }
+    } catch (err) {
+      console.error('Error saving email:', err);
+    }
   }
 
   async function handlePayment() {
@@ -252,8 +288,6 @@ export default function InvoicePage() {
 
       // Send USDC payment to the invoice creator
       sendCalls({
-        connector: connectors[0],
-        account: null,
         calls: [
           {
             to: "0x036CbD53842c5426634e7929541eC2318f3dCF7e", // USDC contract address on Base Sepolia
@@ -267,12 +301,6 @@ export default function InvoicePage() {
             }),
           },
         ],
-        capabilities: {
-          dataCallback: {
-            requests: [{ type: "email", optional: false }],
-            callbackURL: getCallbackURL(),
-          },
-        },
       });
     } catch (err) {
       console.error('Error initiating payment:', err);
@@ -280,6 +308,16 @@ export default function InvoicePage() {
         success: false, 
         error: err instanceof Error ? err.message : "Unknown error occurred" 
       });
+    }
+  }
+
+  async function handlePaymentClick() {
+    if (!userProfile) {
+      // Show email form if no profile exists
+      setShowEmailForm(true);
+    } else {
+      // Proceed with payment if profile exists
+      handlePayment();
     }
   }
 
@@ -426,7 +464,7 @@ export default function InvoicePage() {
                   </svg>
                 </div>
                 <h3 className="text-2xl font-bold text-gray-900 mb-4">Connect Your Wallet</h3>
-                <p className="text-gray-600 mb-8">Connect your Coinbase Smart Wallet to pay this invoice</p>
+                <p className="text-gray-600 mb-8">Connect with Para to pay this invoice using social login or email</p>
                 <button
                   onClick={handleConnect}
                   className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-2xl hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-4 focus:ring-blue-300 focus:ring-opacity-50 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
@@ -434,7 +472,7 @@ export default function InvoicePage() {
                   <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
-                  Connect Wallet
+                  Connect with Para
                 </button>
               </div>
             ) : (
@@ -450,7 +488,7 @@ export default function InvoicePage() {
                       </div>
                       <div>
                         <p className="font-semibold text-green-800">Wallet Connected</p>
-                        <p className="text-sm text-green-600">{address?.slice(0, 6)}...{address?.slice(-4)}</p>
+                        <p className="text-sm text-green-600">Connected: {address?.slice(0, 6)}...{address?.slice(-4)}</p>
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
@@ -480,52 +518,99 @@ export default function InvoicePage() {
                     <div>
                       <span className="text-green-600 font-medium">ETH Balance:</span>
                       <span className="ml-2 text-green-800">
-                        {balance ? `${parseFloat(formatEther(balance.value)).toFixed(4)} ETH` : "Loading..."}
+                        {isEthLoading ? "Loading..." : ethBalance ? `${parseFloat(ethBalance.formatted).toFixed(4)} ${ethBalance.symbol}` : "0.0000 ETH"}
                       </span>
                     </div>
                     <div className="col-span-2">
                       <span className="text-green-600 font-medium">USDC Balance:</span>
                       <span className="ml-2 text-green-800">
-                        {usdcBalance !== undefined ? `${(Number(usdcBalance) / 1e6).toFixed(2)} USDC` : "Loading..."}
+                        {isUsdcLoading ? "Loading..." : usdcBalance ? `${parseFloat(usdcBalance.formatted).toFixed(2)} ${usdcBalance.symbol}` : "0.00 USDC"}
                       </span>
                     </div>
                   </div>
                 </div>
 
+                {/* Email Form for new users */}
+                {showEmailForm && (
+                  <div className="mb-8">
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="text-xl font-bold text-gray-900">Enter Your Email</h3>
+                      <button
+                        onClick={() => setShowEmailForm(false)}
+                        className="text-gray-500 hover:text-gray-700 transition-colors"
+                      >
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+
+                    <form onSubmit={handleEmailSubmit} className="space-y-4">
+                      <div>
+                        <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                          Email Address
+                        </label>
+                        <input
+                          type="email"
+                          id="email"
+                          value={emailInput}
+                          onChange={(e) => setEmailInput(e.target.value)}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                          placeholder="your@email.com"
+                          required
+                        />
+                        <p className="text-xs text-gray-500 mt-1">You'll receive a payment receipt at this email</p>
+                      </div>
+
+                      <button
+                        type="submit"
+                        className="w-full py-3 font-semibold rounded-xl transition-all duration-300 shadow-lg transform bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl hover:-translate-y-1 focus:outline-none focus:ring-4 focus:ring-blue-300 focus:ring-opacity-50"
+                      >
+                        Save Email & Pay {invoice.amount} USDC
+                      </button>
+                    </form>
+                  </div>
+                )}
+
                 {/* Payment Button */}
-                <div className="text-center">
-                  <h3 className="text-2xl font-bold text-gray-900 mb-4">Ready to Pay</h3>
-                  <p className="text-gray-600 mb-8">
-                    You'll be prompted to provide your email for payment notifications
-                  </p>
-                  
-                  <button
-                    onClick={handlePayment}
-                    disabled={isPending}
-                    className={`inline-flex items-center px-8 py-4 font-semibold text-lg rounded-2xl transition-all duration-300 shadow-lg transform ${
-                      isPending
-                        ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                        : 'bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700 hover:shadow-xl hover:-translate-y-1 focus:outline-none focus:ring-4 focus:ring-green-300 focus:ring-opacity-50'
-                    }`}
-                  >
-                    {isPending ? (
-                      <>
-                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-gray-200" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Processing Payment...
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                        </svg>
-                        Pay {invoice.amount} USDC
-                      </>
-                    )}
-                  </button>
-                </div>
+                {!showEmailForm && (
+                  <div className="text-center">
+                    <h3 className="text-2xl font-bold text-gray-900 mb-4">Ready to Pay</h3>
+                    <p className="text-gray-600 mb-8">
+                      {userProfile 
+                        ? 'You\'ll receive a payment receipt at your registered email'
+                        : 'You\'ll be asked to provide your email for payment receipt'
+                      }
+                    </p>
+                    
+                    <button
+                      onClick={handlePaymentClick}
+                      disabled={isPending}
+                      className={`inline-flex items-center px-8 py-4 font-semibold text-lg rounded-2xl transition-all duration-300 shadow-lg transform ${
+                        isPending
+                          ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                          : 'bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700 hover:shadow-xl hover:-translate-y-1 focus:outline-none focus:ring-4 focus:ring-green-300 focus:ring-opacity-50'
+                      }`}
+                    >
+                      {isPending ? (
+                        <>
+                          <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-gray-200" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Processing Payment...
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                          </svg>
+                          Pay {invoice.amount} USDC
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
               </>
             )}
           </div>
