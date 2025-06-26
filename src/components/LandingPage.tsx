@@ -9,21 +9,7 @@ export default function LandingPage() {
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-purple-400/20 to-pink-600/20 rounded-full blur-3xl animate-bounce-subtle" style={{ animationDelay: '1s' }}></div>
       </div>
 
-      {/* Fixed Bolt Badge - Bottom Right */}
-      <div className="fixed bottom-6 right-6 z-50">
-        <a 
-          href="https://bolt.new" 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="block hover:scale-110 transition-transform duration-300 shadow-lg hover:shadow-xl"
-        >
-          <img 
-            src="/image.png" 
-            alt="Powered by Bolt" 
-            className="w-16 h-16 md:w-20 md:h-20 rounded-full"
-          />
-        </a>
-      </div>
+
 
       {/* Header */}
       <header className="relative z-10">
