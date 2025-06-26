@@ -1,0 +1,1 @@
+ALTER TABLE public.invoices ALTER COLUMN chain_id DROP DEFAULT;

@@ -1,0 +1,1 @@
+alter table "public"."invoices" add column "token_symbol" text not null default 'USDC'::text;

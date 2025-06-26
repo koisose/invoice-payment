@@ -2,15 +2,14 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { parseUnits, formatEther, encodeFunctionData, erc20Abi } from "viem";
 import { useSendCalls, useBalance, useChainId, useReadContract } from "wagmi";
-import { useAccount, useModal, useWallet } from "@getpara/react-sdk";
-import { getInvoice, updateInvoiceWithPayment, saveUserProfile, getUserProfile, sendEmailNotification, Invoice, UserProfile } from "../lib/supabase";
+import { useAccount, useModal, useWallet, useLogout } from "@getpara/react-sdk";
+import { getInvoice, updateInvoiceWithPayment, sendEmailNotification, Invoice } from "../lib/supabase";
 
 interface PaymentResult {
   success: boolean;
   error?: string;
   transactionHash?: string;
   email?: string;
-  saved?: boolean;
 }
 
 export default function InvoicePage() {
@@ -19,8 +18,6 @@ export default function InvoicePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [paymentResult, setPaymentResult] = useState<PaymentResult | null>(null);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
   const [emailsSent, setEmailsSent] = useState(false); // Track if emails have been sent
   const [showEmailForm, setShowEmailForm] = useState(false);
@@ -32,6 +29,7 @@ export default function InvoicePage() {
   const { data: account } = useAccount();
   const { data: wallet } = useWallet();
   const { openModal } = useModal();
+  const { logout } = useLogout();
   
   // Extract connection status and address from Para wallet
   const isConnected = !!wallet?.address;
@@ -65,14 +63,7 @@ export default function InvoicePage() {
     }
   }, [invoiceId]);
 
-  // Load user profile when wallet connects
-  useEffect(() => {
-    if (isConnected && address) {
-      loadUserProfile();
-    } else {
-      setUserProfile(null);
-    }
-  }, [isConnected, address]);
+
 
   // Handle payment completion - MAIN PAYMENT PROCESSING
   useEffect(() => {
@@ -92,50 +83,36 @@ export default function InvoicePage() {
           // Mark emails as being sent to prevent duplicates
           setEmailsSent(true);
           
-          // Get creator's email for notification
-          let creatorEmail = '';
-          try {
-            const creatorProfile = await getUserProfile(updatedInvoice.creator_wallet_address);
-            if (creatorProfile?.email) {
-              creatorEmail = creatorProfile.email;
+          const creatorEmail = updatedInvoice.recipient_email;
+
+          if (creatorEmail) {
+            try {
               // Send payment confirmation email to creator
               await sendEmailNotification(
                 'payment_confirmation',
                 updatedInvoice,
-                creatorProfile.email
+                creatorEmail
               );
-              console.log('Payment confirmation email sent to creator');
-            }
-          } catch (emailError) {
-            console.error('Error sending creator notification:', emailError);
-          }
-          
-          // Handle payer email - check if user has profile or get from form
-          let payerEmail = '';
-          if (userProfile?.email) {
-            payerEmail = userProfile.email;
-            
-            // Send payment receipt email to payer
-            try {
-              await sendEmailNotification(
-                'payment_receipt',
-                updatedInvoice,
-                creatorEmail,
-                payerEmail
-              );
-              console.log('Payment receipt email sent to payer');
-            } catch (emailError) {
-              console.error('Error sending payer receipt:', emailError);
+
+              // If payer provided an email, send them a receipt
+              if (emailInput) {
+                await sendEmailNotification(
+                  'payment_receipt',
+                  updatedInvoice,
+                  creatorEmail,
+                  emailInput
+                );
+              }
+            } catch (error) {
+              console.error("Failed to send email notifications:", error);
             }
           }
-          
-          // Set final success result
-          setPaymentResult({
-            success: true,
+
+          setPaymentResult({ 
+            success: true, 
             // @ts-ignore
-            transactionHash: data.transactionHash || '',
-            email: payerEmail,
-            saved: !!payerEmail
+            transactionHash: data.transactionHash,
+            email: emailInput || undefined
           });
         })
         .catch((err) => {
@@ -147,7 +124,7 @@ export default function InvoicePage() {
           });
         });
     }
-  }, [isSuccess, data, invoice, address, emailsSent, userProfile]);
+  }, [isSuccess, data, invoice, address, emailsSent]);
 
   // Listen for sendCalls error
   useEffect(() => {
@@ -179,33 +156,6 @@ export default function InvoicePage() {
     }
   }
 
-  async function loadUserProfile() {
-    if (!address) return;
-    
-    setIsLoadingProfile(true);
-    try {
-      const profile = await getUserProfile(address);
-      setUserProfile(profile);
-    } catch (error) {
-      console.error('Error loading user profile:', error);
-    } finally {
-      setIsLoadingProfile(false);
-    }
-  }
-
-  async function saveProfile(email: string) {
-    if (!address) return false;
-
-    try {
-      const profile = await saveUserProfile(address, email);
-      setUserProfile(profile);
-      return true;
-    } catch (error) {
-      console.error('Error saving user profile:', error);
-      return false;
-    }
-  }
-
   function getChainName(chainId: number) {
     switch (chainId) {
       case 84532: // Base Sepolia
@@ -233,19 +183,18 @@ export default function InvoicePage() {
     }
   }
 
-  async function handleDisconnect() {
-    try {
-      // Use Para's logout functionality
-      if (account?.logout) {
-        await account.logout();
-      }
-      setPaymentResult(null);
-      setUserProfile(null);
-      setEmailsSent(false); // Reset email sent flag
-      setShowEmailForm(false);
-    } catch (error) {
-      console.error('Error disconnecting:', error);
-    }
+  function handleDisconnect() {
+    logout(undefined, {
+      onSuccess: () => {
+        console.log('Successfully logged out');
+        setPaymentResult(null);
+        setShowEmailForm(false);
+        setEmailInput('');
+      },
+      onError: (error) => {
+        console.error("Failed to disconnect:", error);
+      },
+    });
   }
 
   function handleConnect() {
@@ -257,21 +206,11 @@ export default function InvoicePage() {
   }
 
   // Handle email form submission
-  async function handleEmailSubmit(e: React.FormEvent) {
+  function handleEmailSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!emailInput.trim() || !address) return;
-
-    try {
-      const saved = await saveProfile(emailInput.trim());
-      if (saved) {
-        setShowEmailForm(false);
-        setEmailInput('');
-        // Proceed with payment after saving email
-        handlePayment();
-      }
-    } catch (err) {
-      console.error('Error saving email:', err);
-    }
+    // No need to save profile, just proceed to payment
+    setShowEmailForm(false);
+    handlePayment();
   }
 
   async function handlePayment() {
@@ -311,14 +250,19 @@ export default function InvoicePage() {
     }
   }
 
-  async function handlePaymentClick() {
-    if (!userProfile) {
-      // Show email form if no profile exists
-      setShowEmailForm(true);
-    } else {
-      // Proceed with payment if profile exists
-      handlePayment();
+  function handlePaymentClick() {
+    // If user is not connected, open connect modal
+    if (!isConnected) {
+      handleConnect();
+      return;
     }
+    // If user hasn't entered an email for the receipt, show form
+    if (!emailInput) {
+      setShowEmailForm(true);
+      return;
+    }
+    // Otherwise, proceed to payment
+    handlePayment();
   }
 
   if (loading) {
@@ -387,11 +331,9 @@ export default function InvoicePage() {
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-gray-900">Invoice Details</h2>
             <div className={`px-4 py-2 rounded-full text-sm font-medium ${
-              invoice.status === 'paid' 
-                ? 'bg-green-100 text-green-800' 
-                : invoice.status === 'expired'
-                ? 'bg-red-100 text-red-800'
-                : 'bg-yellow-100 text-yellow-800'
+              invoice.status === 'paid' ? 'bg-green-100 text-green-800' :
+              invoice.status === 'expired' ? 'bg-red-100 text-red-800' :
+              'bg-yellow-100 text-yellow-800'
             }`}>
               {invoice.status.toUpperCase()}
             </div>
@@ -410,12 +352,7 @@ export default function InvoicePage() {
               <p className="text-sm font-medium text-gray-500 mb-1">Created</p>
               <p className="text-gray-900">{new Date(invoice.created_at).toLocaleDateString()}</p>
             </div>
-            <div>
-              <p className="text-sm font-medium text-gray-500 mb-1">Expires</p>
-              <p className="text-gray-900">
-                {invoice.expires_at ? new Date(invoice.expires_at).toLocaleDateString() : 'Never'}
-              </p>
-            </div>
+
           </div>
 
           <div className="mb-6">
@@ -545,28 +482,20 @@ export default function InvoicePage() {
                       </button>
                     </div>
 
-                    <form onSubmit={handleEmailSubmit} className="space-y-4">
-                      <div>
-                        <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                          Email Address
-                        </label>
-                        <input
-                          type="email"
-                          id="email"
-                          value={emailInput}
-                          onChange={(e) => setEmailInput(e.target.value)}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                          placeholder="your@email.com"
-                          required
-                        />
-                        <p className="text-xs text-gray-500 mt-1">You'll receive a payment receipt at this email</p>
-                      </div>
-
-                      <button
+                    <form onSubmit={handleEmailSubmit}>
+                      <input
+                        type="email"
+                        value={emailInput}
+                        onChange={(e) => setEmailInput(e.target.value)}
+                        placeholder="your.email@example.com"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                        required
+                      />
+                      <button 
                         type="submit"
-                        className="w-full py-3 font-semibold rounded-xl transition-all duration-300 shadow-lg transform bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl hover:-translate-y-1 focus:outline-none focus:ring-4 focus:ring-blue-300 focus:ring-opacity-50"
+                        className="w-full mt-4 px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold text-lg hover:bg-blue-700 transition-all duration-200"
                       >
-                        Save Email & Pay {invoice.amount} USDC
+                        Confirm Email & Pay
                       </button>
                     </form>
                   </div>
@@ -577,10 +506,7 @@ export default function InvoicePage() {
                   <div className="text-center">
                     <h3 className="text-2xl font-bold text-gray-900 mb-4">Ready to Pay</h3>
                     <p className="text-gray-600 mb-8">
-                      {userProfile 
-                        ? 'You\'ll receive a payment receipt at your registered email'
-                        : 'You\'ll be asked to provide your email for payment receipt'
-                      }
+                      You'll be asked to provide your email for the payment receipt.
                     </p>
                     
                     <button
@@ -634,6 +560,17 @@ export default function InvoicePage() {
           </div>
         )}
 
+        <div className="text-center mt-8">
+          <Link
+            to={`/invoice/${invoiceId}/pdf`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          >
+            Download as PDF
+          </Link>
+        </div>
+
         {/* Expired Status */}
         {invoice.status === 'expired' && (
           <div className="bg-gradient-to-r from-red-50 to-pink-50 rounded-3xl p-8 border border-red-200 text-center">
@@ -674,11 +611,7 @@ export default function InvoicePage() {
                     <p className="text-green-700">
                       <span className="font-semibold">Email for notifications:</span> {paymentResult.email}
                     </p>
-                    {paymentResult.saved && (
-                      <p className="text-sm text-green-600 mt-2">
-                        ✓ Email saved to your profile for future transactions
-                      </p>
-                    )}
+
                   </div>
                 )}
                 <p className="text-green-600">

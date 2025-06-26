@@ -10,86 +10,29 @@ if (!supabaseUrl || !supabaseAnonKey) {
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 // Database types
-export interface UserProfile {
-  id: string
-  wallet_address: string
-  email: string
-  created_at: string
-  updated_at: string
-}
-
 export interface Invoice {
+  token_symbol: string;
   id: string
   creator_wallet_address: string
   recipient_address: string | null
+  recipient_email: string | null
   amount: number
   description: string
   status: 'pending' | 'paid' | 'expired'
   payment_hash: string | null
   created_at: string
   updated_at: string
-  expires_at: string | null
-}
-
-// Database functions
-export const saveUserProfile = async (walletAddress: string, email: string): Promise<UserProfile> => {
-  const { data, error } = await supabase
-    .from('user_profiles')
-    .upsert(
-      { 
-        wallet_address: walletAddress.toLowerCase(), 
-        email: email 
-      },
-      { 
-        onConflict: 'wallet_address',
-        ignoreDuplicates: false 
-      }
-    )
-    .select()
-    .single()
-
-  if (error) {
-    console.error('Error saving user profile:', error)
-    throw error
-  }
-
-  return data
-}
-
-export const getUserProfile = async (walletAddress: string): Promise<UserProfile | null> => {
-  const { data, error } = await supabase
-    .from('user_profiles')
-    .select('*')
-    .eq('wallet_address', walletAddress.toLowerCase())
-    .single()
-
-  if (error) {
-    if (error.code === 'PGRST116') {
-      // No rows returned - user profile doesn't exist
-      return null
-    }
-    console.error('Error fetching user profile:', error)
-    throw error
-  }
-
-  return data
+  chain_id: number
 }
 
 // Invoice functions
-export const createInvoice = async (
-  creatorWalletAddress: string,
-  amount: number,
-  description: string,
-  recipientAddress?: string
-): Promise<Invoice> => {
+export const createInvoice = async (invoice: Omit<Invoice, 'id' | 'created_at' | 'updated_at' | 'status' | 'payment_hash' | 'recipient_address'>): Promise<Invoice> => {
   const { data, error } = await supabase
     .from('invoices')
     .insert({
-      creator_wallet_address: creatorWalletAddress.toLowerCase(),
-      recipient_address: recipientAddress?.toLowerCase() || null,
-      amount,
-      description,
-      status: 'pending'
+      ...invoice,
+      creator_wallet_address: invoice.creator_wallet_address.toLowerCase(),
+      status: 'pending',
     })
     .select()
     .single()

@@ -1,0 +1,2 @@
+ALTER TABLE public.invoices
+ADD COLUMN chain_id BIGINT NOT NULL DEFAULT 1;
